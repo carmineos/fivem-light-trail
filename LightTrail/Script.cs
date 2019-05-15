@@ -6,18 +6,19 @@ namespace LightTrail
 {
     public class Script : BaseScript
     {
-        //public string dict = "core";
-        //public string particleName = "veh_light_red_trail";
-
-        public string dict = "scr_minigametennis";
-        public string particleName = "scr_tennis_ball_trail";
-        public string boneName1;
-        public string boneName2;
+        public const string dict = "core";
+        public const string particleName = "veh_light_red_trail";
+        public const string evolutionPropertyName = "speed";
+        //public const string particleName = "veh_slipstream";
+        //public const string evolutionPropertyName = "slipstream";
 
         public const string brakelight_l = "brakelight_l";
         public const string brakelight_r = "brakelight_r";
         public const string taillight_r = "taillight_r";
         public const string taillight_l = "taillight_l";
+
+        public string boneName1;
+        public string boneName2;
 
         public int ptfxHandle1;
         public int ptfxHandle2;
@@ -27,7 +28,8 @@ namespace LightTrail
         public Vector3 offset = Vector3.Zero;
         public Vector3 rotation = Vector3.Zero;
         public Vector3 color = new Vector3(1.0f, 0.0f, 0.0f);
-        public float scale = 0.5f;
+        public float scale = 1.0f;
+        public float alpha = 1.0f;
 
         public bool EnablePTFX => CurrentVehicle != -1;
             //&& GetEntitySpeed(CurrentVehicle) != 0.0f
@@ -51,7 +53,7 @@ namespace LightTrail
 
         public async Task Loop()
         {
-            if(EnablePTFX)
+            if (EnablePTFX)
             {
                 UseParticleFxAssetNextCall(dict);
 
@@ -78,7 +80,9 @@ namespace LightTrail
 
             // LOOPED ONE
             handle = StartParticleFxLoopedOnEntityBone(ptfxName, entity, offset.X, offset.Y, offset.Z, rotation.X, rotation.Y, rotation.Z, boneIndex, scale, false, false, false);
+            SetParticleFxLoopedEvolution(handle, evolutionPropertyName, 1.0f, false);
             SetParticleFxLoopedColour(handle, color.X, color.Y, color.Z, false);
+            SetParticleFxLoopedAlpha(handle, alpha);
         }
 
         public void Reset()
