@@ -11,8 +11,13 @@ namespace LightTrail
 
         public string dict = "scr_minigametennis";
         public string particleName = "scr_tennis_ball_trail";
-        public string boneName1 = "brakelight_l";
-        public string boneName2 = "brakelight_r";
+        public string boneName1;
+        public string boneName2;
+
+        public const string brakelight_l = "brakelight_l";
+        public const string brakelight_r = "brakelight_r";
+        public const string taillight_r = "taillight_r";
+        public const string taillight_l = "taillight_l";
 
         public int ptfxHandle1;
         public int ptfxHandle2;
@@ -67,8 +72,11 @@ namespace LightTrail
         public void StartParticleFx(ref int handle, string ptfxName, int entity, string boneName, Vector3 offset, Vector3 rotation, float scale, Vector3 color)
         {
             int boneIndex = GetEntityBoneIndexByName(entity, boneName);
+
+            // NON LOOPED ONE
             //Vector3 bonePosition = GetWorldPositionOfEntityBone(entity, boneIndex);
 
+            // LOOPED ONE
             handle = StartParticleFxLoopedOnEntityBone(ptfxName, entity, offset.X, offset.Y, offset.Z, rotation.X, rotation.Y, rotation.Z, boneIndex, scale, false, false, false);
             SetParticleFxLoopedColour(handle, color.X, color.Y, color.Z, false);
         }
@@ -97,6 +105,7 @@ namespace LightTrail
                     if (vehicle != CurrentVehicle)
                     {
                         CurrentVehicle = vehicle;
+                        EnsureBones(CurrentVehicle);
                     }
                 }
                 else
@@ -115,5 +124,16 @@ namespace LightTrail
 
             await Task.FromResult(0);
         }
+
+        /// <summary>
+        /// Some vehicles have no brakelights and use taillights as brakelights
+        /// </summary>
+        /// <param name="entity"></param>
+        private void EnsureBones(int entity)
+        {
+            boneName1 = GetEntityBoneIndexByName(CurrentVehicle, brakelight_l) != -1 ? brakelight_l : taillight_l;
+            boneName2 = GetEntityBoneIndexByName(CurrentVehicle, brakelight_r) != -1 ? brakelight_r : taillight_r;
+        }
     }
+
 }
