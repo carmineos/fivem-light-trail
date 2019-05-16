@@ -42,13 +42,18 @@ namespace LightTrail
 
             public void Start(int entity)
             {
-                if (!Enabled || m_isFadingOut)
+                if (!Enabled)
                 {
                     return;
                 }
 
-                Alpha = 1.0f;
-                Scale = 1.0f;
+                ResetFade();
+
+                // reset the fade before returning
+                if (m_isFadingOut)
+                {
+                    return;
+                }
 
                 UseParticleFxAssetNextCall("core");
 
@@ -70,6 +75,12 @@ namespace LightTrail
                 }
             }
 
+            public void ResetFade()
+            {
+                Alpha = 1.0f;
+                Scale = 1.0f;
+            }
+
             private bool m_isFadingOut = false;
 
             public void FadeOut()
@@ -86,7 +97,7 @@ namespace LightTrail
 
                 if (m_isFadingOut)
                 {
-                    Alpha -= (0.7f * GetFrameTime());
+                    Alpha -= (0.9f * GetFrameTime());
                     Scale = Alpha;
 
                     if (Alpha < 0.0f)
