@@ -1,9 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using CitizenFX.Core;
+using System;
 using System.Threading.Tasks;
-using CitizenFX.Core;
 using static CitizenFX.Core.Native.API;
 
 namespace LightTrail
@@ -24,10 +21,19 @@ namespace LightTrail
             BrakeOnly,
         }
 
+        public enum TrailStatus
+        {
+            Empty,
+            FadingIn,
+            FadingOut,
+            Full
+        }
+
         class TrailFx
         {
             public int Handle { get; set; }
             public string BoneName { get; set; }
+            public TrailStatus Status { get; set; } = TrailStatus.Empty;
             public bool Enabled { get; set; } = true;
             public Vector3 Offset { get; set; } = Vector3.Zero;
             public Vector3 Rotation { get; set; } = Vector3.Zero;
@@ -48,14 +54,6 @@ namespace LightTrail
                     return;
                 }
 
-                ResetFade();
-
-                // reset the fade before returning
-                if (m_isFadingOut)
-                {
-                    return;
-                }
-
                 UseParticleFxAssetNextCall("core");
 
                 if (!DoesParticleFxLoopedExist(Handle))
@@ -68,7 +66,7 @@ namespace LightTrail
                 }
             }
 
-            public void Reset()
+            public void Stop()
             {
                 if (DoesParticleFxLoopedExist(Handle))
                 {
@@ -76,57 +74,113 @@ namespace LightTrail
                 }
             }
 
-            public void ResetFade()
-            {
-                Alpha = 1.0f;
-                Scale = 1.0f;
-
-                SetParticleFxLoopedAlpha(Handle, Alpha);
-                SetParticleFxLoopedScale(Handle, Scale);
-            }
-
-            private bool m_isFadingOut = false;
-
-            public void FadeOut()
+            public async Task LoopBrakeMode()
             {
                 if (!Enabled || !DoesParticleFxLoopedExist(Handle))
-                {
                     return;
-                }
 
-                if (!m_isFadingOut && Alpha > 0.0f)
+                switch (Status)
                 {
-                    m_isFadingOut = true;
-                }
-
-                if (m_isFadingOut)
-                {
-                    Alpha -= (0.9f * GetFrameTime());
-                    Scale = Alpha;
-
-                    if (Alpha < 0.0f)
-                    {
-                        m_isFadingOut = false;
-
+                    case TrailStatus.Empty:
                         Alpha = 0.0f;
                         Scale = 0.0f;
+                        if (DoesParticleFxLoopedExist(Handle))
+                            RemoveParticleFx(Handle, false);
+                        break;
 
-                        RemoveParticleFx(Handle, false);
+                    case TrailStatus.Full:
+                        Alpha = 1.0f;
+                        Scale = 1.0f;
+                        SetParticleFxLoopedAlpha(Handle, Alpha);
+                        SetParticleFxLoopedScale(Handle, Scale);
+                        break;
 
-                        return;
-                    }
+                    case TrailStatus.FadingIn:
+                        Alpha += (2.0f * GetFrameTime());
+                        Scale = Alpha;
+                        SetParticleFxLoopedAlpha(Handle, Alpha);
+                        SetParticleFxLoopedScale(Handle, Scale);
+                        break;
 
-                    SetParticleFxLoopedAlpha(Handle, Alpha);
-                    SetParticleFxLoopedScale(Handle, Scale);
+                    case TrailStatus.FadingOut:
+                        Alpha -= (2.0f * GetFrameTime());
+                        Scale = Alpha;
+                        SetParticleFxLoopedAlpha(Handle, Alpha);
+                        SetParticleFxLoopedScale(Handle, Scale);
+                        break;
                 }
+                await Task.FromResult(0);
             }
+
+            public bool FadeOutFinished => Alpha <= 0.0f && Scale <= 0.0f;
+
+            public bool FadeInFinished => Alpha >= 1.0f && Scale >= 1.0f;
         }
 
-        private async Task FadeOutAll()
+        private async Task UpdateBrakeModeStatus(TrailFx trail)
         {
-            m_trailLeft.FadeOut();
-            m_trailRight.FadeOut();
-            m_trailMiddle.FadeOut();
+            switch (trail.Status)
+            {
+                case TrailStatus.Empty:
+                    if (PlayerIsBraking)
+                    {
+                        trail.Status = TrailStatus.FadingIn;
+                        trail.Start(m_playerVehicle);
+                    }
+                    break;
+
+                case TrailStatus.FadingIn:
+                    if (PlayerIsBraking)
+                    {
+                        if (trail.FadeInFinished)
+                            trail.Status = TrailStatus.Full;
+                    }
+                    else
+                        trail.Status = TrailStatus.FadingOut;
+                    break;
+
+                case TrailStatus.FadingOut:
+                    if (PlayerIsBraking)
+                        trail.Status = TrailStatus.FadingIn;
+                    else
+                    {
+                        if (trail.FadeOutFinished)
+                            trail.Status = TrailStatus.Empty;
+                    }
+                    break;
+
+                case TrailStatus.Full:
+                    if (!PlayerIsBraking)
+                        trail.Status = TrailStatus.FadingOut;
+                    break;
+            }
+
+            await Task.FromResult(0);
+        }
+
+        private async Task UpdateBrakeModeStatusAll()
+        {
+            UpdateBrakeModeStatus(m_trailLeft);
+            UpdateBrakeModeStatus(m_trailRight);
+            UpdateBrakeModeStatus(m_trailMiddle);
+
+            await Task.FromResult(0);
+        }
+
+        private async Task LoopBrakeModeAll()
+        {
+            m_trailLeft.LoopBrakeMode();
+            m_trailRight.LoopBrakeMode();
+            m_trailMiddle.LoopBrakeMode();
+
+            await Task.FromResult(0);
+        }
+
+        private async Task StopAll()
+        {
+            m_trailLeft.Stop();
+            m_trailRight.Stop();
+            m_trailMiddle.Stop();
 
             await Task.FromResult(0);
         }
@@ -136,15 +190,6 @@ namespace LightTrail
             m_trailLeft.Start(entity);
             m_trailRight.Start(entity);
             m_trailMiddle.Start(entity);
-
-            await Task.FromResult(0);
-        }
-
-        private async Task ResetAll()
-        {
-            m_trailLeft.Reset();
-            m_trailRight.Reset();
-            m_trailMiddle.Reset();
 
             await Task.FromResult(0);
         }
@@ -163,6 +208,7 @@ namespace LightTrail
                 {
                     case "off":
                         m_trailMode = TrailMode.Off;
+                        await SetupTrailMode();
                         break;
                     case "on":
                         m_trailMode = TrailMode.On;
@@ -199,16 +245,31 @@ namespace LightTrail
             switch (m_trailMode)
             {
                 case TrailMode.Off:
+                    await StopAll();
                     break;
                 case TrailMode.On:
                     m_trailLeft.BoneName = "taillight_l";
                     m_trailRight.BoneName = "taillight_r";
                     m_trailMiddle.BoneName = "taillight_m";
+                    m_trailLeft.Alpha = 1.0f;
+                    m_trailLeft.Scale = 1.0f;
+                    m_trailRight.Alpha = 1.0f;
+                    m_trailRight.Scale = 1.0f;
+                    m_trailMiddle.Alpha = 1.0f;
+                    m_trailMiddle.Scale = 1.0f;
+                    await StartAll(m_playerVehicle);
                     break;
                 case TrailMode.BrakeOnly:
                     m_trailLeft.BoneName = GetEntityBoneIndexByName(m_playerVehicle, "brakelight_l") != -1 ? "brakelight_l" : "taillight_l";
                     m_trailRight.BoneName = GetEntityBoneIndexByName(m_playerVehicle, "brakelight_r") != -1 ? "brakelight_r" : "taillight_r";
                     m_trailMiddle.BoneName = GetEntityBoneIndexByName(m_playerVehicle, "brakelight_m") != -1 ? "brakelight_m" : "taillight_m";
+                    m_trailLeft.Alpha = 0.0f;
+                    m_trailLeft.Scale = 0.0f;
+                    m_trailRight.Alpha = 0.0f;
+                    m_trailRight.Scale = 0.0f;
+                    m_trailMiddle.Alpha = 0.0f;
+                    m_trailMiddle.Scale = 0.0f;
+                    await StartAll(m_playerVehicle);
                     break;
             }
             await Task.FromResult(0);
@@ -224,7 +285,7 @@ namespace LightTrail
             await UpdateVehiclePtfx(m_playerVehicle);
         }
 
-        private bool PlayerIsBraking => (GetEntitySpeed(m_playerVehicle) != 0.0f && GetEntitySpeedVector(m_playerVehicle, true).Y > 0.0f && 
+        private bool PlayerIsBraking => (GetEntitySpeed(m_playerVehicle) != 0.0f && GetEntitySpeedVector(m_playerVehicle, true).Y > 0.0f &&
             (IsControlPressed(1, (int)Control.VehicleBrake) || IsDisabledControlPressed(1, (int)Control.VehicleBrake)));
 
         private async Task UpdateVehiclePtfx(int entity)
@@ -232,22 +293,14 @@ namespace LightTrail
             switch (m_trailMode)
             {
                 case TrailMode.Off:
-                    await ResetAll();
                     break;
+
                 case TrailMode.On:
-                    await StartAll(entity);
                     break;
+
                 case TrailMode.BrakeOnly:
-
-                    if (PlayerIsBraking)
-                    {
-                        await StartAll(entity);
-                    }
-                    else
-                    {
-                        await FadeOutAll();
-                    }
-
+                    await LoopBrakeModeAll();
+                    await UpdateBrakeModeStatusAll();
                     break;
             }
 
@@ -288,7 +341,7 @@ namespace LightTrail
                     // Update current vehicle and get its preset
                     if (vehicle != m_playerVehicle)
                     {
-                        await ResetAll();
+                        await StopAll();
                         m_playerVehicle = vehicle;
                     }
                 }
@@ -296,14 +349,14 @@ namespace LightTrail
                 {
                     // If player isn't driving current vehicle or vehicle is dead
                     m_playerVehicle = -1;
-                    await ResetAll();
+                    await StopAll();
                 }
             }
             else
             {
                 // If player isn't in any vehicle
                 m_playerVehicle = -1;
-                await ResetAll();
+                await StopAll();
             }
 
             await Delay(500);
