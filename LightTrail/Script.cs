@@ -1,4 +1,8 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using CitizenFX.Core;
 using static CitizenFX.Core.Native.API;
 
@@ -6,53 +10,86 @@ namespace LightTrail
 {
     public class Script : BaseScript
     {
+        #region Script Constants
+
         public const string dict = "core";
         public const string particleName = "veh_light_red_trail";
         public const string evolutionPropertyName = "speed";
-        //public const string particleName = "veh_slipstream";
-        //public const string evolutionPropertyName = "slipstream";
-
         public const string brakelight_l = "brakelight_l";
         public const string brakelight_r = "brakelight_r";
         public const string brakelight_m = "brakelight_m";
-
         public const string taillight_l = "taillight_l";
         public const string taillight_r = "taillight_r";
         public const string taillight_m = "taillight_m";
 
-        public const string decorNameLeft = "light_trail_l";
-        public const string decorNameRight = "light_trail_r";
-        public const string decorNameMiddle = "light_trail_m";
-
-        public Vector3 offset = Vector3.Zero;
-        public Vector3 rotation = Vector3.Zero;
-        public Vector3 color = new Vector3(1.0f, 0.0f, 0.0f);
-        public float scale = 1.0f;
-        public float alpha = 1.0f;
+        #endregion
 
         #region Private Members
 
-        private int ptfxHandle1;
-        private int ptfxHandle2;
-        private int ptfxHandle3;
+        private TrailMode trailMode = TrailMode.BrakeOnly;
+        private string boneL;
+        private string boneR;
+        private string boneM;
+        private int playerVehicle;
+        private TrailFx trailL = new TrailFx("left");
+        private TrailFx trailR = new TrailFx("right");
+        private TrailFx trailM = new TrailFx("middle");
 
-        private int PlayerPed = -1;
-        private int CurrentVehicle = -1;
-        
         #endregion
 
+        public enum TrailMode
+        {
+            Off,
+            On,
+            BrakeOnly,
 
+        }
 
-        public bool PTFXShouldBeEnabled => CurrentVehicle != -1;
-            //&& GetEntitySpeed(CurrentVehicle) != 0.0f
-            //&& (IsControlJustPressed(1, (int)Control.VehicleBrake) || IsDisabledControlJustPressed(1, (int)Control.VehicleBrake));
+        class TrailFx
+        {
+            public string Name { get; set; }
+            public int Handle { get; set; }
+            public Vector3 Offset { get; set; } = Vector3.Zero;
+            public Vector3 Rotation { get; set; } = Vector3.Zero;
+            public Vector3 Color { get; set; } = new Vector3(1.0f, 0.0f, 0.0f);
+            public float Scale { get; set; } = 1.0f;
+            public float Alpha { get; set; } = 1.0f;
+
+            public TrailFx(string name)
+            {
+                Name = name;
+            }
+        }
 
         public Script()
         {
-            // Register decorators
-            DecorRegister(decorNameLeft, 3);
-            DecorRegister(decorNameRight, 3);
-            DecorRegister(decorNameMiddle, 3);
+            RegisterCommand("trail_mode", new Action<int, dynamic>((source, args) =>
+            {
+                if (args.Count < 1)
+                {
+                    Debug.WriteLine($"LightTrail: Missing argument off|on|brakeonly");
+                    return;
+                }
+
+                switch(args[0])
+                {
+                    case "on":
+                        trailMode = TrailMode.On;
+                        break;
+                    case "off":
+                        trailMode = TrailMode.Off;
+                        break;
+                    case "brake":
+                        trailMode = TrailMode.BrakeOnly;
+                        break;
+                    default:
+                        Debug.WriteLine($"LightTrail: Error parsing {args[0]}");
+                        return;
+                }
+
+                Debug.WriteLine($"LightTrail: Switched trail mode to {trailMode}");
+
+            }), false);
 
             Tick += Initialize;
         }
@@ -62,183 +99,153 @@ namespace LightTrail
             Tick -= Initialize;
 
             RequestNamedPtfxAsset(dict);
-            while (!HasNamedPtfxAssetLoaded(dict)) await Delay(0);
 
-            Tick += GetCurrentVehicle;
-            Tick += UpdateCurrentVehicle;
-            Tick += UpdatePlayersVehicles;
+            while (!HasNamedPtfxAssetLoaded(dict))
+            {
+                await Delay(0);
+            }
+
+            Tick += GetPlayerVehicle;
+            Tick += UpdatePlayerVehicle;
         }
 
-        public async Task UpdatePlayersVehicles()
+        private async Task UpdatePlayerVehicle()
         {
-            for (int i = 0; i < 255; i++)
+            if (!DoesEntityExist(playerVehicle))
+                return;
+
+            await UpdateVehiclePtfx(playerVehicle);
+        }
+
+        private async Task UpdateVehiclePtfx(int entity)
+        {
+            switch (trailMode)
             {
-                var ped = GetPlayerPed(i);
+                case TrailMode.Off:
+                    await Reset();
+                    break;
+                    
+                case TrailMode.On:
+                    UseParticleFxAssetNextCall(dict);
+                    boneL = taillight_l;
+                    boneR = taillight_r;
+                    boneM = taillight_m;
+                    StartForTrail(trailL);
+                    StartForTrail(trailR);
+                    StartForTrail(trailM);
+                    break;
 
-                if (IsPedInAnyVehicle(ped, false))
-                {
-                    int vehicle = GetVehiclePedIsIn(ped, false);
+                case TrailMode.BrakeOnly:
 
-                    if (GetPedInVehicleSeat(vehicle, -1) == ped && !IsEntityDead(vehicle) && vehicle != CurrentVehicle)
+                    boneL = GetEntityBoneIndexByName(entity, brakelight_l) != -1 ? brakelight_l : taillight_l;
+                    boneR = GetEntityBoneIndexByName(entity, brakelight_r) != -1 ? brakelight_r : taillight_r;
+                    boneM = GetEntityBoneIndexByName(entity, brakelight_m) != -1 ? brakelight_m : taillight_m;
+
+                    if (GetEntitySpeed(playerVehicle) != 0.0f && GetEntitySpeedVector(playerVehicle, true).Y > 0.0f && (IsControlPressed(1, (int)Control.VehicleBrake) || IsDisabledControlPressed(1, (int)Control.VehicleBrake) || IsControlJustPressed(1, (int)Control.VehicleBrake) || IsDisabledControlJustPressed(1, (int)Control.VehicleBrake)))
                     {
-                        SetupParticle(vehicle);
+                        //Debug.WriteLine($"Speed: {GetEntitySpeed(playerVehicle)}, Vector: {GetEntitySpeedVector(playerVehicle, true)}, Brake: {(IsControlPressed(1, (int)Control.VehicleBrake) || IsDisabledControlPressed(1, (int)Control.VehicleBrake) || IsControlJustPressed(1, (int)Control.VehicleBrake) || IsDisabledControlJustPressed(1, (int)Control.VehicleBrake))}");
+
+                        UseParticleFxAssetNextCall(dict);
+                        StartForTrail(trailL);
+                        StartForTrail(trailR);
+                        StartForTrail(trailM);
                     }
-                }
+                    else
+                    {
+                        // TODO: Use a timed fading end instead 
+                        await Reset();
+                    }
+                    break;
             }
 
-            await Task.FromResult(0);
-        }
-
-        public async Task UpdateCurrentVehicle()
-        {
-            if (PTFXShouldBeEnabled)
+            void StartForTrail(TrailFx trail)
             {
-                UseParticleFxAssetNextCall(dict);
-            }
-
-            await Task.FromResult(0);
-        }
-
-        public void SetupParticle(int entity)
-        {
-            UseParticleFxAssetNextCall(dict);
-            var boneL = GetEntityBoneIndexByName(entity, brakelight_l) != -1 ? brakelight_l : taillight_l;
-            var boneR = GetEntityBoneIndexByName(entity, brakelight_r) != -1 ? brakelight_r : taillight_r;
-            var boneM = GetEntityBoneIndexByName(entity, brakelight_m) != -1 ? brakelight_m : taillight_m;
-
-            AddSynchedParticleFxLooped(entity, decorNameLeft, boneL);
-            AddSynchedParticleFxLooped(entity, decorNameRight, boneR);
-            AddSynchedParticleFxLooped(entity, decorNameMiddle, boneM);
-
-            // TODO: Implement onTick update
-            // Use alpha or add/remove ptfx according on if the vehicle is braking
-        }
-
-        public void AddSynchedParticleFxLooped(int entity, string decorName, string boneName)
-        {
-            // If the decor exists
-            if (DecorExistOn(entity, decorName))
-            {
-                // Get the decor (which holds the handle)
-                var handle = DecorGetInt(entity, decorName);
-
-                if (!DoesParticleFxLoopedExist(handle))
+                if (!DoesParticleFxLoopedExist(trail.Handle))
                 {
-                    StartParticleFx(ref handle, particleName, entity, boneName, offset, rotation, scale, color);
+                    int handle = -1;
+
+                    switch (trail.Name)
+                    {
+                        case "left":
+                            StartParticleFx(ref handle, particleName, entity, boneL, trail.Color, trail.Offset, trail.Rotation, trail.Scale, trail.Alpha);
+                            break;
+                        case "middle":
+                            StartParticleFx(ref handle, particleName, entity, boneM, trail.Color, trail.Offset, trail.Rotation, trail.Scale, trail.Alpha);
+                            break;
+                        case "right":
+                            StartParticleFx(ref handle, particleName, entity, boneR, trail.Color, trail.Offset, trail.Rotation, trail.Scale, trail.Alpha);
+                            break;
+                    }
+
+                    trail.Handle = handle;
                 }
             }
+
+            await Task.FromResult(0);
         }
 
-
-        public void StartParticleFx(ref int handle, string ptfxName, int entity, string boneName, Vector3 offset, Vector3 rotation, float scale, Vector3 color)
+        public void StartParticleFx(ref int handle, string ptfxName, int entity, string boneName, Vector3 color, Vector3 offset, Vector3 rotation, float scale, float alpha)
         {
             // Get bone index
             int boneIndex = GetEntityBoneIndexByName(entity, boneName);
 
-            // Be sure the bone exists on the entity
+            // don't do anything if the bone doesn't exist
             if (boneIndex == -1)
                 return;
 
-            // Create the looped ptfx
-            handle = StartParticleFxLoopedOnEntityBone(ptfxName, entity, offset.X, offset.Y, offset.Z, rotation.X, rotation.Y, rotation.Z, boneIndex, scale, false, false, false);
+            // create the looped ptfx
+            // TODO: Replace with StartNetworkedParticleFxLoopedOnEntityBone
+            handle = StartParticleFxLoopedOnEntityBone_2(ptfxName, entity, offset.X, offset.Y, offset.Z, rotation.X, rotation.Y, rotation.Z, boneIndex, scale, false, false, false);
             SetParticleFxLoopedEvolution(handle, evolutionPropertyName, 1.0f, false);
             SetParticleFxLoopedColour(handle, color.X, color.Y, color.Z, false);
             SetParticleFxLoopedAlpha(handle, alpha);
         }
 
         /// <summary>
-        /// Removes the ptfxs and the associated decors from the entity
-        /// </summary>
-        /// <param name="vehicle">The entity</param>
-        public void ResetEntity(int vehicle)
-        {
-            RemoveSynchedParticleFxLooped(vehicle, decorNameLeft);
-            RemoveSynchedParticleFxLooped(vehicle, decorNameRight);
-            RemoveSynchedParticleFxLooped(vehicle, decorNameMiddle);
-        }
-
-        /// <summary>
-        /// Removes the ptfx and the associated decor from the entity
-        /// </summary>
-        /// <param name="entity"></param>
-        /// <param name="decorName"></param>
-        public void RemoveSynchedParticleFxLooped(int entity, string decorName)
-        {
-            // If the decor exists
-            if (DecorExistOn(entity, decorName))
-            {
-                // Get the decor (which holds the handle)
-                var handle = DecorGetInt(entity, decorName);
-
-                // If the ptfx exists
-                if (DoesParticleFxLoopedExist(handle))
-                    // Remove the ptfx
-                    RemoveParticleFx(handle, false);
-
-                // Remove the decor
-                DecorRemove(entity, decorName);
-            }
-        }
-
-        /// <summary>
-        /// Updates the <see cref="CurrentVehicle"/>
+        /// Updates the <see cref="playerVehicle"/>
         /// </summary>
         /// <returns></returns>
-        private async Task GetCurrentVehicle()
+        private async Task GetPlayerVehicle()
         {
-            PlayerPed = PlayerPedId();
+            var playerPed = PlayerPedId();
 
-            if (IsPedInAnyVehicle(PlayerPed, false))
+            if (IsPedInAnyVehicle(playerPed, false))
             {
-                int vehicle = GetVehiclePedIsIn(PlayerPed, false);
+                int vehicle = GetVehiclePedIsIn(playerPed, false);
 
-                if (GetPedInVehicleSeat(vehicle, -1) == PlayerPed && !IsEntityDead(vehicle))
+                if (GetPedInVehicleSeat(vehicle, -1) == playerPed && !IsEntityDead(vehicle))
                 {
                     // Update current vehicle and get its preset
-                    if (vehicle != CurrentVehicle)
+                    if (vehicle != playerVehicle)
                     {
-                        CurrentVehicle = vehicle;
-
-                        // Create PTFX
-                        if (!DoesParticleFxLoopedExist(ptfxHandle1))
-                        {
-                            var boneLeft = GetEntityBoneIndexByName(vehicle, brakelight_l) != -1 ? brakelight_l : taillight_l;
-
-                            StartParticleFx(ref ptfxHandle1, particleName, CurrentVehicle, boneLeft, offset, rotation, scale, color);
-                            DecorSetInt(CurrentVehicle, decorNameLeft, 3);
-                        }
-                        if (!DoesParticleFxLoopedExist(ptfxHandle2))
-                        {
-                            var boneRight = GetEntityBoneIndexByName(vehicle, brakelight_r) != -1 ? brakelight_r : taillight_r;
-
-                            StartParticleFx(ref ptfxHandle2, particleName, CurrentVehicle, boneRight, offset, rotation, scale, color);
-                            DecorSetInt(CurrentVehicle, decorNameRight, 3);
-                        }
-                        if (!DoesParticleFxLoopedExist(ptfxHandle3))
-                        {
-                            var boneMiddle = GetEntityBoneIndexByName(vehicle, brakelight_m) != -1 ? brakelight_m : taillight_m;
-
-                            StartParticleFx(ref ptfxHandle3, particleName, CurrentVehicle, boneMiddle, offset, rotation, scale, color);
-                            DecorSetInt(CurrentVehicle, decorNameMiddle, 3);
-                        }
+                        await Reset();
+                        playerVehicle = vehicle;
                     }
                 }
                 else
                 {
-                    // If current vehicle isn't a car or player isn't driving current vehicle or vehicle is dead
-                    CurrentVehicle = -1;
-                    ResetEntity(CurrentVehicle);
+                    // If player isn't driving current vehicle or vehicle is dead
+                    playerVehicle = -1;
+                    await Reset();
                 }
             }
             else
             {
                 // If player isn't in any vehicle
-                CurrentVehicle = -1;
-                ResetEntity(CurrentVehicle);
+                playerVehicle = -1;
+                await Reset();
             }
+
+            await Delay(500);
+        }
+
+        private async Task Reset()
+        {
+            if (DoesParticleFxLoopedExist(trailL.Handle)) RemoveParticleFx(trailL.Handle, false);
+            if (DoesParticleFxLoopedExist(trailR.Handle)) RemoveParticleFx(trailR.Handle, false);
+            if (DoesParticleFxLoopedExist(trailM.Handle)) RemoveParticleFx(trailM.Handle, false);
 
             await Task.FromResult(0);
         }
     }
-
 }
