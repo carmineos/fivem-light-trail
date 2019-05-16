@@ -34,6 +34,7 @@ namespace LightTrail
             public Vector3 Color { get; set; } = new Vector3(1.0f, 0.0f, 0.0f);
             public float Scale { get; set; } = 1.0f;
             public float Alpha { get; set; } = 1.0f;
+            public float Evolution { get; set; } = 1.0f;
 
             public TrailFx(string name)
             {
@@ -61,7 +62,7 @@ namespace LightTrail
                 {
                     int handle = -1;
 
-                    StartParticleFx(ref handle, "veh_light_red_trail", entity, BoneName, Color, Offset, Rotation, Scale, Alpha);
+                    StartParticleFx(ref handle, "veh_light_red_trail", entity, BoneName, Color, Offset, Rotation, Scale, Alpha, Evolution);
 
                     Handle = handle;
                 }
@@ -253,7 +254,7 @@ namespace LightTrail
             await Task.FromResult(0);
         }
 
-        private static void StartParticleFx(ref int handle, string ptfxName, int entity, string boneName, Vector3 color, Vector3 offset, Vector3 rotation, float scale, float alpha)
+        private static void StartParticleFx(ref int handle, string ptfxName, int entity, string boneName, Vector3 color, Vector3 offset, Vector3 rotation, float scale, float alpha, float evolution)
         {
             // Get bone index
             int boneIndex = GetEntityBoneIndexByName(entity, boneName);
@@ -265,7 +266,7 @@ namespace LightTrail
             // create the looped ptfx
             // TODO: Replace with StartNetworkedParticleFxLoopedOnEntityBone
             handle = StartParticleFxLoopedOnEntityBone_2(ptfxName, entity, offset.X, offset.Y, offset.Z, rotation.X, rotation.Y, rotation.Z, boneIndex, scale, true, true, true);
-            SetParticleFxLoopedEvolution(handle, "speed", 1.0f, false);
+            SetParticleFxLoopedEvolution(handle, "speed", evolution, false);
             SetParticleFxLoopedColour(handle, color.X, color.Y, color.Z, false);
             SetParticleFxLoopedAlpha(handle, alpha);
         }
