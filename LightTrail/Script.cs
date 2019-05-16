@@ -173,7 +173,6 @@ namespace LightTrail
                     {
                         // TODO: Replace with linear fade out
                         await FadeOutTrails();
-                        await Reset();
                     }
                     break;
             }
@@ -204,6 +203,9 @@ namespace LightTrail
 
         public async Task FadeOutParticleFx(int handle)
         {
+            if (!DoesParticleFxLoopedExist(handle))
+                return;
+
             SetParticleFxLoopedAlpha(handle, 0.8f);
             SetParticleFxLoopedScale(handle, 0.8f);
 
@@ -222,6 +224,8 @@ namespace LightTrail
             await Delay(100);
             SetParticleFxLoopedAlpha(handle, 0.0f);
             SetParticleFxLoopedScale(handle, 0.0f);
+
+            RemoveParticleFx(handle, false);
         }
 
         public void StartParticleFx(ref int handle, string ptfxName, int entity, string boneName, Vector3 color, Vector3 offset, Vector3 rotation, float scale, float alpha)
