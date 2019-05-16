@@ -10,29 +10,12 @@ namespace LightTrail
 {
     public class Script : BaseScript
     {
-        #region Script Constants
+        private TrailMode m_trailMode = TrailMode.BrakeOnly;
+        private int m_playerVehicle;
 
-        public const string dict = "core";
-        public const string particleName = "veh_light_red_trail";
-        public const string evolutionPropertyName = "speed";
-        public const string brakelight_l = "brakelight_l";
-        public const string brakelight_r = "brakelight_r";
-        public const string brakelight_m = "brakelight_m";
-        public const string taillight_l = "taillight_l";
-        public const string taillight_r = "taillight_r";
-        public const string taillight_m = "taillight_m";
-
-        #endregion
-
-        #region Private Members
-
-        private TrailMode trailMode = TrailMode.BrakeOnly;
-        private int playerVehicle;
-        private TrailFx trailL = new TrailFx(taillight_l);
-        private TrailFx trailR = new TrailFx(taillight_r);
-        private TrailFx trailM = new TrailFx(taillight_m);
-
-        #endregion
+        private TrailFx m_trailLeft = new TrailFx("taillight_l");
+        private TrailFx m_trailRight = new TrailFx("taillight_r");
+        private TrailFx m_trailMiddle = new TrailFx("taillight_m");
 
         public enum TrailMode
         {
@@ -56,11 +39,104 @@ namespace LightTrail
             {
                 BoneName = name;
             }
+
+            public void Start(int entity)
+            {
+                if (!Enabled || m_isFadingOut)
+                {
+                    return;
+                }
+
+                Alpha = 1.0f;
+                Scale = 1.0f;
+
+                UseParticleFxAssetNextCall("core");
+
+                if (!DoesParticleFxLoopedExist(Handle))
+                {
+                    int handle = -1;
+
+                    StartParticleFx(ref handle, "veh_light_red_trail", entity, BoneName, Color, Offset, Rotation, Scale, Alpha);
+
+                    Handle = handle;
+                }
+            }
+
+            public void Reset()
+            {
+                if (DoesParticleFxLoopedExist(Handle))
+                {
+                    RemoveParticleFx(Handle, false);
+                }
+            }
+
+            private bool m_isFadingOut = false;
+
+            public void FadeOut()
+            {
+                if (!Enabled || !DoesParticleFxLoopedExist(Handle))
+                {
+                    return;
+                }
+
+                if (!m_isFadingOut && Alpha > 0.0f)
+                {
+                    m_isFadingOut = true;
+                }
+
+                if (m_isFadingOut)
+                {
+                    Alpha -= (0.7f * GetFrameTime());
+                    Scale = Alpha;
+
+                    if (Alpha < 0.0f)
+                    {
+                        m_isFadingOut = false;
+
+                        Alpha = 0.0f;
+                        Scale = 0.0f;
+
+                        RemoveParticleFx(Handle, false);
+
+                        return;
+                    }
+
+                    SetParticleFxLoopedAlpha(Handle, Alpha);
+                    SetParticleFxLoopedScale(Handle, Scale);
+                }
+            }
+        }
+
+        private async Task FadeOutAll()
+        {
+            m_trailLeft.FadeOut();
+            m_trailRight.FadeOut();
+            m_trailMiddle.FadeOut();
+
+            await Task.FromResult(0);
+        }
+
+        private async Task StartAll(int entity)
+        {
+            m_trailLeft.Start(entity);
+            m_trailRight.Start(entity);
+            m_trailMiddle.Start(entity);
+
+            await Task.FromResult(0);
+        }
+
+        private async Task ResetAll()
+        {
+            m_trailLeft.Reset();
+            m_trailRight.Reset();
+            m_trailMiddle.Reset();
+
+            await Task.FromResult(0);
         }
 
         public Script()
         {
-            RegisterCommand("trail_mode", new Action<int, dynamic>((source, args) =>
+            RegisterCommand("trail_mode", new Action<int, dynamic>(async (source, args) =>
             {
                 if (args.Count < 1)
                 {
@@ -71,22 +147,22 @@ namespace LightTrail
                 switch (args[0])
                 {
                     case "off":
-                        trailMode = TrailMode.Off;
+                        m_trailMode = TrailMode.Off;
                         break;
                     case "on":
-                        trailMode = TrailMode.On;
-                        SetupTrailMode();
+                        m_trailMode = TrailMode.On;
+                        await SetupTrailMode();
                         break;
                     case "brake":
-                        trailMode = TrailMode.BrakeOnly;
-                        SetupTrailMode();
+                        m_trailMode = TrailMode.BrakeOnly;
+                        await SetupTrailMode();
                         break;
                     default:
                         Debug.WriteLine($"LightTrail: Error parsing {args[0]}");
                         return;
                 }
 
-                Debug.WriteLine($"LightTrail: Switched trail mode to {trailMode}");
+                Debug.WriteLine($"LightTrail: Switched trail mode to {m_trailMode}");
 
             }), false);
 
@@ -97,13 +173,6 @@ namespace LightTrail
         {
             Tick -= Initialize;
 
-            RequestNamedPtfxAsset(dict);
-
-            while (!HasNamedPtfxAssetLoaded(dict))
-            {
-                await Delay(0);
-            }
-
             await SetupTrailMode();
 
             Tick += GetPlayerVehicle;
@@ -112,19 +181,19 @@ namespace LightTrail
 
         private async Task SetupTrailMode()
         {
-            switch (trailMode)
+            switch (m_trailMode)
             {
                 case TrailMode.Off:
                     break;
                 case TrailMode.On:
-                    trailL.BoneName = taillight_l; // GetEntityBoneIndexByName(playerVehicle, taillight_l) != -1 ? taillight_l : brakelight_l;
-                    trailR.BoneName = taillight_r; // GetEntityBoneIndexByName(playerVehicle, taillight_r) != -1 ? taillight_r : brakelight_r;
-                    trailM.BoneName = taillight_m; // GetEntityBoneIndexByName(playerVehicle, taillight_m) != -1 ? taillight_m : brakelight_m;
+                    m_trailLeft.BoneName = "taillight_l";
+                    m_trailRight.BoneName = "taillight_r";
+                    m_trailMiddle.BoneName = "taillight_m";
                     break;
                 case TrailMode.BrakeOnly:
-                    trailL.BoneName = GetEntityBoneIndexByName(playerVehicle, brakelight_l) != -1 ? brakelight_l : taillight_l;
-                    trailR.BoneName = GetEntityBoneIndexByName(playerVehicle, brakelight_r) != -1 ? brakelight_r : taillight_r;
-                    trailM.BoneName = GetEntityBoneIndexByName(playerVehicle, brakelight_m) != -1 ? brakelight_m : taillight_m;
+                    m_trailLeft.BoneName = GetEntityBoneIndexByName(m_playerVehicle, "brakelight_l") != -1 ? "brakelight_l" : "taillight_l";
+                    m_trailRight.BoneName = GetEntityBoneIndexByName(m_playerVehicle, "brakelight_r") != -1 ? "brakelight_r" : "taillight_r";
+                    m_trailMiddle.BoneName = GetEntityBoneIndexByName(m_playerVehicle, "brakelight_m") != -1 ? "brakelight_m" : "taillight_m";
                     break;
             }
             await Task.FromResult(0);
@@ -132,103 +201,45 @@ namespace LightTrail
 
         private async Task UpdatePlayerVehicle()
         {
-            if (!DoesEntityExist(playerVehicle))
+            if (!DoesEntityExist(m_playerVehicle))
+            {
                 return;
+            }
 
-            await UpdateVehiclePtfx(playerVehicle);
+            await UpdateVehiclePtfx(m_playerVehicle);
         }
 
-        private bool PlayerIsBraking => (GetEntitySpeed(playerVehicle) != 0.0f && GetEntitySpeedVector(playerVehicle, true).Y > 0.0f && 
-            (IsControlPressed(1, (int)Control.VehicleBrake) || IsDisabledControlPressed(1, (int)Control.VehicleBrake) || 
-            IsControlJustPressed(1, (int)Control.VehicleBrake) || IsDisabledControlJustPressed(1, (int)Control.VehicleBrake)));
+        private bool PlayerIsBraking => (GetEntitySpeed(m_playerVehicle) != 0.0f && GetEntitySpeedVector(m_playerVehicle, true).Y > 0.0f && 
+            (IsControlPressed(1, (int)Control.VehicleBrake) || IsDisabledControlPressed(1, (int)Control.VehicleBrake)));
 
         private async Task UpdateVehiclePtfx(int entity)
         {
-            switch (trailMode)
+            switch (m_trailMode)
             {
                 case TrailMode.Off:
-                    await Reset();
+                    await ResetAll();
                     break;
-                    
                 case TrailMode.On:
-                    UseParticleFxAssetNextCall(dict);
-
-                    if (trailL.Enabled) StartForTrail(trailL);
-                    if (trailR.Enabled) StartForTrail(trailR);
-                    if (trailM.Enabled) StartForTrail(trailM);
+                    await StartAll(entity);
                     break;
-
                 case TrailMode.BrakeOnly:
 
                     if (PlayerIsBraking)
                     {
-                        //Debug.WriteLine($"Speed: {GetEntitySpeed(playerVehicle)}, Vector: {GetEntitySpeedVector(playerVehicle, true)}, Brake: {(IsControlPressed(1, (int)Control.VehicleBrake) || IsDisabledControlPressed(1, (int)Control.VehicleBrake) || IsControlJustPressed(1, (int)Control.VehicleBrake) || IsDisabledControlJustPressed(1, (int)Control.VehicleBrake))}");
-
-                        UseParticleFxAssetNextCall(dict);
-                        if (trailL.Enabled) StartForTrail(trailL);
-                        if (trailR.Enabled) StartForTrail(trailR);
-                        if (trailM.Enabled) StartForTrail(trailM);
+                        await StartAll(entity);
                     }
                     else
                     {
-                        // TODO: Replace with linear fade out
-                        await FadeOutTrails();
+                        await FadeOutAll();
                     }
+
                     break;
-            }
-
-            void StartForTrail(TrailFx trail)
-            {
-                if (!DoesParticleFxLoopedExist(trail.Handle))
-                {
-                    int handle = -1;
-
-                    StartParticleFx(ref handle, particleName, entity, trail.BoneName, trail.Color, trail.Offset, trail.Rotation, trail.Scale, trail.Alpha);
-
-                    trail.Handle = handle;
-                }
             }
 
             await Task.FromResult(0);
         }
 
-        public async Task FadeOutTrails()
-        {
-            var t1 = FadeOutParticleFx(trailL.Handle);
-            var t2 = FadeOutParticleFx(trailR.Handle);
-            var t3 = FadeOutParticleFx(trailM.Handle);
-
-            await Task.WhenAll(t1, t2, t3);
-        }
-
-        public async Task FadeOutParticleFx(int handle)
-        {
-            if (!DoesParticleFxLoopedExist(handle))
-                return;
-
-            SetParticleFxLoopedAlpha(handle, 0.8f);
-            SetParticleFxLoopedScale(handle, 0.8f);
-
-            await Delay(100);
-            SetParticleFxLoopedAlpha(handle, 0.6f);
-            SetParticleFxLoopedScale(handle, 0.6f);
-
-            await Delay(100);
-            SetParticleFxLoopedAlpha(handle, 0.4f);
-            SetParticleFxLoopedScale(handle, 0.4f);
-
-            await Delay(100);
-            SetParticleFxLoopedAlpha(handle, 0.2f);
-            SetParticleFxLoopedScale(handle, 0.2f);
-
-            await Delay(100);
-            SetParticleFxLoopedAlpha(handle, 0.0f);
-            SetParticleFxLoopedScale(handle, 0.0f);
-
-            RemoveParticleFx(handle, false);
-        }
-
-        public void StartParticleFx(ref int handle, string ptfxName, int entity, string boneName, Vector3 color, Vector3 offset, Vector3 rotation, float scale, float alpha)
+        private static void StartParticleFx(ref int handle, string ptfxName, int entity, string boneName, Vector3 color, Vector3 offset, Vector3 rotation, float scale, float alpha)
         {
             // Get bone index
             int boneIndex = GetEntityBoneIndexByName(entity, boneName);
@@ -239,14 +250,14 @@ namespace LightTrail
 
             // create the looped ptfx
             // TODO: Replace with StartNetworkedParticleFxLoopedOnEntityBone
-            handle = StartParticleFxLoopedOnEntityBone_2(ptfxName, entity, offset.X, offset.Y, offset.Z, rotation.X, rotation.Y, rotation.Z, boneIndex, scale, false, false, false);
-            SetParticleFxLoopedEvolution(handle, evolutionPropertyName, 1.0f, false);
+            handle = StartParticleFxLoopedOnEntityBone_2(ptfxName, entity, offset.X, offset.Y, offset.Z, rotation.X, rotation.Y, rotation.Z, boneIndex, scale, true, true, true);
+            SetParticleFxLoopedEvolution(handle, "speed", 1.0f, false);
             SetParticleFxLoopedColour(handle, color.X, color.Y, color.Z, false);
             SetParticleFxLoopedAlpha(handle, alpha);
         }
 
         /// <summary>
-        /// Updates the <see cref="playerVehicle"/>
+        /// Updates the <see cref="m_playerVehicle"/>
         /// </summary>
         /// <returns></returns>
         private async Task GetPlayerVehicle()
@@ -260,36 +271,27 @@ namespace LightTrail
                 if (GetPedInVehicleSeat(vehicle, -1) == playerPed && !IsEntityDead(vehicle))
                 {
                     // Update current vehicle and get its preset
-                    if (vehicle != playerVehicle)
+                    if (vehicle != m_playerVehicle)
                     {
-                        await Reset();
-                        playerVehicle = vehicle;
+                        await ResetAll();
+                        m_playerVehicle = vehicle;
                     }
                 }
                 else
                 {
                     // If player isn't driving current vehicle or vehicle is dead
-                    playerVehicle = -1;
-                    await Reset();
+                    m_playerVehicle = -1;
+                    await ResetAll();
                 }
             }
             else
             {
                 // If player isn't in any vehicle
-                playerVehicle = -1;
-                await Reset();
+                m_playerVehicle = -1;
+                await ResetAll();
             }
 
             await Delay(500);
-        }
-
-        private async Task Reset()
-        {
-            if (DoesParticleFxLoopedExist(trailL.Handle)) RemoveParticleFx(trailL.Handle, false);
-            if (DoesParticleFxLoopedExist(trailR.Handle)) RemoveParticleFx(trailR.Handle, false);
-            if (DoesParticleFxLoopedExist(trailM.Handle)) RemoveParticleFx(trailM.Handle, false);
-
-            await Task.FromResult(0);
         }
     }
 }
