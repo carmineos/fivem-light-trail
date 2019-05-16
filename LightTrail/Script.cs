@@ -79,6 +79,9 @@ namespace LightTrail
             {
                 Alpha = 1.0f;
                 Scale = 1.0f;
+
+                SetParticleFxLoopedAlpha(Handle, Alpha);
+                SetParticleFxLoopedScale(Handle, Scale);
             }
 
             private bool m_isFadingOut = false;
