@@ -28,9 +28,9 @@ namespace LightTrail
 
         private TrailMode trailMode = TrailMode.BrakeOnly;
         private int playerVehicle;
-        private TrailFx trailL = new TrailFx("left");
-        private TrailFx trailR = new TrailFx("right");
-        private TrailFx trailM = new TrailFx("middle");
+        private TrailFx trailL = new TrailFx(taillight_l);
+        private TrailFx trailR = new TrailFx(taillight_r);
+        private TrailFx trailM = new TrailFx(taillight_m);
 
         #endregion
 
@@ -43,7 +43,6 @@ namespace LightTrail
 
         class TrailFx
         {
-            public string Name { get; set; }
             public int Handle { get; set; }
             public string BoneName { get; set; }
             public bool Enabled { get; set; } = true;
@@ -55,7 +54,7 @@ namespace LightTrail
 
             public TrailFx(string name)
             {
-                Name = name;
+                BoneName = name;
             }
         }
 
@@ -153,10 +152,10 @@ namespace LightTrail
                     
                 case TrailMode.On:
                     UseParticleFxAssetNextCall(dict);
-                    
-                    StartForTrail(trailL);
-                    StartForTrail(trailR);
-                    StartForTrail(trailM);
+
+                    if (trailL.Enabled) StartForTrail(trailL);
+                    if (trailR.Enabled) StartForTrail(trailR);
+                    if (trailM.Enabled) StartForTrail(trailM);
                     break;
 
                 case TrailMode.BrakeOnly:
@@ -166,13 +165,14 @@ namespace LightTrail
                         //Debug.WriteLine($"Speed: {GetEntitySpeed(playerVehicle)}, Vector: {GetEntitySpeedVector(playerVehicle, true)}, Brake: {(IsControlPressed(1, (int)Control.VehicleBrake) || IsDisabledControlPressed(1, (int)Control.VehicleBrake) || IsControlJustPressed(1, (int)Control.VehicleBrake) || IsDisabledControlJustPressed(1, (int)Control.VehicleBrake))}");
 
                         UseParticleFxAssetNextCall(dict);
-                        StartForTrail(trailL);
-                        StartForTrail(trailR);
-                        StartForTrail(trailM);
+                        if (trailL.Enabled) StartForTrail(trailL);
+                        if (trailR.Enabled) StartForTrail(trailR);
+                        if (trailM.Enabled) StartForTrail(trailM);
                     }
                     else
                     {
-                        // TODO: Use a timed fading end instead 
+                        // TODO: Replace with linear fade out
+                        await FadeOutTrails();
                         await Reset();
                     }
                     break;
@@ -184,24 +184,44 @@ namespace LightTrail
                 {
                     int handle = -1;
 
-                    switch (trail.Name)
-                    {
-                        case "left":
-                            StartParticleFx(ref handle, particleName, entity, trail.BoneName, trail.Color, trail.Offset, trail.Rotation, trail.Scale, trail.Alpha);
-                            break;
-                        case "middle":
-                            StartParticleFx(ref handle, particleName, entity, trail.BoneName, trail.Color, trail.Offset, trail.Rotation, trail.Scale, trail.Alpha);
-                            break;
-                        case "right":
-                            StartParticleFx(ref handle, particleName, entity, trail.BoneName, trail.Color, trail.Offset, trail.Rotation, trail.Scale, trail.Alpha);
-                            break;
-                    }
+                    StartParticleFx(ref handle, particleName, entity, trail.BoneName, trail.Color, trail.Offset, trail.Rotation, trail.Scale, trail.Alpha);
 
                     trail.Handle = handle;
                 }
             }
 
             await Task.FromResult(0);
+        }
+
+        public async Task FadeOutTrails()
+        {
+            var t1 = FadeOutParticleFx(trailL.Handle);
+            var t2 = FadeOutParticleFx(trailR.Handle);
+            var t3 = FadeOutParticleFx(trailM.Handle);
+
+            await Task.WhenAll(t1, t2, t3);
+        }
+
+        public async Task FadeOutParticleFx(int handle)
+        {
+            SetParticleFxLoopedAlpha(handle, 0.8f);
+            SetParticleFxLoopedScale(handle, 0.8f);
+
+            await Delay(100);
+            SetParticleFxLoopedAlpha(handle, 0.6f);
+            SetParticleFxLoopedScale(handle, 0.6f);
+
+            await Delay(100);
+            SetParticleFxLoopedAlpha(handle, 0.4f);
+            SetParticleFxLoopedScale(handle, 0.4f);
+
+            await Delay(100);
+            SetParticleFxLoopedAlpha(handle, 0.2f);
+            SetParticleFxLoopedScale(handle, 0.2f);
+
+            await Delay(100);
+            SetParticleFxLoopedAlpha(handle, 0.0f);
+            SetParticleFxLoopedScale(handle, 0.0f);
         }
 
         public void StartParticleFx(ref int handle, string ptfxName, int entity, string boneName, Vector3 color, Vector3 offset, Vector3 rotation, float scale, float alpha)
