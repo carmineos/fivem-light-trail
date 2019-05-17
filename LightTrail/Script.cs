@@ -320,7 +320,7 @@ namespace LightTrail
 
             // create the looped ptfx
             // TODO: Replace with StartNetworkedParticleFxLoopedOnEntityBone
-            handle = StartParticleFxLoopedOnEntityBone_2(ptfxName, entity, offset.X, offset.Y, offset.Z, rotation.X, rotation.Y, rotation.Z, boneIndex, scale, true, true, true);
+            handle = StartNetworkedParticleFxLoopedOnEntityBone(ptfxName, entity, offset.X, offset.Y, offset.Z, rotation.X, rotation.Y, rotation.Z, boneIndex, scale, true, true, true);
             SetParticleFxLoopedEvolution(handle, "speed", evolution, false);
             SetParticleFxLoopedColour(handle, color.X, color.Y, color.Z, false);
             SetParticleFxLoopedAlpha(handle, alpha);
