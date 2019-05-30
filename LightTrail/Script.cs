@@ -54,15 +54,20 @@ namespace LightTrail
                     return;
                 }
 
-                UseParticleFxAssetNextCall("core");
-
                 if (!DoesParticleFxLoopedExist(Handle))
                 {
-                    int handle = -1;
+                    // Get bone index
+                    int boneIndex = GetEntityBoneIndexByName(entity, BoneName);
 
-                    StartParticleFx(ref handle, "veh_light_red_trail", entity, BoneName, Color, Offset, Rotation, Scale, Alpha, Evolution);
+                    // don't do anything if the bone doesn't exist
+                    if (boneIndex == -1)
+                        return;
 
-                    Handle = handle;
+                    UseParticleFxAssetNextCall("core");
+                    Handle = StartNetworkedParticleFxLoopedOnEntityBone("veh_light_red_trail", entity, Offset.X, Offset.Y, Offset.Z, Rotation.X, Rotation.Y, Rotation.Z, boneIndex, Scale, true, true, true);
+                    SetParticleFxLoopedEvolution(Handle, "speed", Evolution, false);
+                    SetParticleFxLoopedColour(Handle, Color.X, Color.Y, Color.Z, false);
+                    SetParticleFxLoopedAlpha(Handle, Alpha);
                 }
             }
 
@@ -89,6 +94,7 @@ namespace LightTrail
             {
                 SetParticleFxLoopedAlpha(Handle, Alpha);
                 SetParticleFxLoopedScale(Handle, Scale);
+                //SetParticleFxLoopedEvolution(Handle, "speed", Evolution, false);
             }
 
             public async Task LoopBrakeMode()
@@ -99,6 +105,7 @@ namespace LightTrail
                 switch (Status)
                 {
                     case TrailStatus.Empty:
+                        //Off();
                         Stop();
                         break;
 
@@ -307,23 +314,6 @@ namespace LightTrail
             }
 
             await Task.FromResult(0);
-        }
-
-        private static void StartParticleFx(ref int handle, string ptfxName, int entity, string boneName, Vector3 color, Vector3 offset, Vector3 rotation, float scale, float alpha, float evolution)
-        {
-            // Get bone index
-            int boneIndex = GetEntityBoneIndexByName(entity, boneName);
-
-            // don't do anything if the bone doesn't exist
-            if (boneIndex == -1)
-                return;
-
-            // create the looped ptfx
-            // TODO: Replace with StartNetworkedParticleFxLoopedOnEntityBone
-            handle = StartNetworkedParticleFxLoopedOnEntityBone(ptfxName, entity, offset.X, offset.Y, offset.Z, rotation.X, rotation.Y, rotation.Z, boneIndex, scale, true, true, true);
-            SetParticleFxLoopedEvolution(handle, "speed", evolution, false);
-            SetParticleFxLoopedColour(handle, color.X, color.Y, color.Z, false);
-            SetParticleFxLoopedAlpha(handle, alpha);
         }
 
         /// <summary>
