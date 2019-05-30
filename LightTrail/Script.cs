@@ -82,19 +82,21 @@ namespace LightTrail
             {
                 Alpha = 1.0f;
                 Scale = 1.0f;
+                Evolution = 1.0f;
             }
 
             public void Off()
             {
                 Alpha = 0.0f;
                 Scale = 0.0f;
+                Evolution = 0.0f;
             }
 
             public void Update()
             {
                 SetParticleFxLoopedAlpha(Handle, Alpha);
                 SetParticleFxLoopedScale(Handle, Scale);
-                //SetParticleFxLoopedEvolution(Handle, "speed", Evolution, false);
+                SetParticleFxLoopedEvolution(Handle, "speed", Evolution, false);
             }
 
             public async Task LoopBrakeMode()
@@ -105,8 +107,8 @@ namespace LightTrail
                 switch (Status)
                 {
                     case TrailStatus.Empty:
-                        //Off();
-                        Stop();
+                        Off();
+                        //Stop();
                         break;
 
                     case TrailStatus.Full:
@@ -117,12 +119,14 @@ namespace LightTrail
                     case TrailStatus.FadingIn:
                         Alpha += (2.5f * GetFrameTime());
                         Scale = Alpha;
+                        Evolution = Alpha;
                         Update();
                         break;
 
                     case TrailStatus.FadingOut:
                         Alpha -= (2.5f * GetFrameTime());
                         Scale = Alpha;
+                        Evolution = Alpha;
                         Update();
                         break;
                 }
