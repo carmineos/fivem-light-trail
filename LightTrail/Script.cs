@@ -7,7 +7,7 @@ namespace LightTrail
 {
     public class Script : BaseScript
     {
-        private TrailMode m_trailMode = TrailMode.BrakeOnly;
+        private TrailMode m_trailMode = TrailMode.On;
         private int m_playerVehicle;
 
         private TrailFx m_trailLeft = new TrailFx("taillight_l");
@@ -18,7 +18,7 @@ namespace LightTrail
         {
             Off,
             On,
-            BrakeOnly,
+            Brake,
         }
 
         public enum TrailStatus
@@ -73,7 +73,6 @@ namespace LightTrail
 
             public void Stop()
             {
-                Off();
                 if (DoesParticleFxLoopedExist(Handle))
                     RemoveParticleFx(Handle, false);
             }
@@ -99,6 +98,20 @@ namespace LightTrail
                 SetParticleFxLoopedEvolution(Handle, "speed", Evolution, false);
             }
 
+            public void FadeIn()
+            {
+                Alpha += (2.5f * GetFrameTime());
+                Scale = Alpha;
+                Evolution = Alpha;
+            }
+
+            public void FadeOut()
+            {
+                Alpha -= (2.5f * GetFrameTime());
+                Scale = Alpha;
+                Evolution = Alpha;
+            }
+
             public async Task LoopBrakeMode()
             {
                 if (!Enabled || !DoesParticleFxLoopedExist(Handle))
@@ -108,7 +121,7 @@ namespace LightTrail
                 {
                     case TrailStatus.Empty:
                         Off();
-                        //Stop();
+                        Stop();
                         break;
 
                     case TrailStatus.Full:
@@ -117,16 +130,12 @@ namespace LightTrail
                         break;
 
                     case TrailStatus.FadingIn:
-                        Alpha += (2.5f * GetFrameTime());
-                        Scale = Alpha;
-                        Evolution = Alpha;
+                        FadeIn();
                         Update();
                         break;
 
                     case TrailStatus.FadingOut:
-                        Alpha -= (2.5f * GetFrameTime());
-                        Scale = Alpha;
-                        Evolution = Alpha;
+                        FadeOut();
                         Update();
                         break;
                 }
@@ -225,26 +234,15 @@ namespace LightTrail
                     return;
                 }
 
-                switch (args[0])
+                if(!Enum.TryParse<TrailMode>(args[0], true, out TrailMode trailMode))
                 {
-                    case "off":
-                        m_trailMode = TrailMode.Off;
-                        await SetupTrailMode();
-                        break;
-                    case "on":
-                        m_trailMode = TrailMode.On;
-                        await SetupTrailMode();
-                        break;
-                    case "brake":
-                        m_trailMode = TrailMode.BrakeOnly;
-                        await SetupTrailMode();
-                        break;
-                    default:
-                        Debug.WriteLine($"LightTrail: Error parsing {args[0]}");
-                        return;
+                    Debug.WriteLine($"LightTrail: Error parsing {args[0]}");
+                    return;
                 }
 
-                Debug.WriteLine($"LightTrail: Switched trail mode to {m_trailMode}");
+                m_trailMode = trailMode;
+                Debug.WriteLine($"LightTrail: Switched trail mode to {trailMode}");
+                await SetupTrailMode();
 
             }), false);
 
@@ -255,6 +253,7 @@ namespace LightTrail
         {
             Tick -= Initialize;
 
+            //await GetPlayerVehicle();
             await SetupTrailMode();
 
             Tick += GetPlayerVehicle;
@@ -263,10 +262,11 @@ namespace LightTrail
 
         private async Task SetupTrailMode()
         {
+            await StopAll();
+
             switch (m_trailMode)
             {
                 case TrailMode.Off:
-                    await StopAll();
                     break;
                 case TrailMode.On:
                     m_trailLeft.BoneName = "taillight_l";
@@ -277,7 +277,7 @@ namespace LightTrail
                     m_trailMiddle.On();
                     await StartAll(m_playerVehicle);
                     break;
-                case TrailMode.BrakeOnly:
+                case TrailMode.Brake:
                     m_trailLeft.BoneName = GetEntityBoneIndexByName(m_playerVehicle, "brakelight_l") != -1 ? "brakelight_l" : "taillight_l";
                     m_trailRight.BoneName = GetEntityBoneIndexByName(m_playerVehicle, "brakelight_r") != -1 ? "brakelight_r" : "taillight_r";
                     m_trailMiddle.BoneName = GetEntityBoneIndexByName(m_playerVehicle, "brakelight_m") != -1 ? "brakelight_m" : "taillight_m";
@@ -287,6 +287,8 @@ namespace LightTrail
                     await StartAll(m_playerVehicle);
                     break;
             }
+
+            
             await Task.FromResult(0);
         }
 
@@ -311,7 +313,7 @@ namespace LightTrail
                 case TrailMode.On:
                     break;
 
-                case TrailMode.BrakeOnly:
+                case TrailMode.Brake:
                     await UpdateBrakeModeStatusAll();
                     await LoopBrakeModeAll();
                     break;
