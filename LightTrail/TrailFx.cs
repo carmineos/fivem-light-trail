@@ -54,7 +54,7 @@ namespace LightTrail
                     return;
 
                 UseParticleFxAssetNextCall("core");
-                Handle = StartNetworkedParticleFxLoopedOnEntityBone("veh_light_red_trail", entity, Offset.X, Offset.Y, Offset.Z, Rotation.X, Rotation.Y, Rotation.Z, boneIndex, Scale, true, true, true);
+                Handle = StartParticleFxLoopedOnEntityBone("veh_light_red_trail", entity, Offset.X, Offset.Y, Offset.Z, Rotation.X, Rotation.Y, Rotation.Z, boneIndex, Scale, true, true, true);
                 SetParticleFxLoopedEvolution(Handle, "speed", Evolution, false);
                 SetParticleFxLoopedColour(Handle, Color.X, Color.Y, Color.Z, false);
                 SetParticleFxLoopedAlpha(Handle, Alpha);
