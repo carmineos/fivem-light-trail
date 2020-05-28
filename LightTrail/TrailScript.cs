@@ -54,6 +54,8 @@ namespace LightTrail
                         remoteVehicles.Add(new TrailVehicle(p));
                     }
                 }
+
+                lastUpdateTime = GetGameTimer();
             }
         }
 
