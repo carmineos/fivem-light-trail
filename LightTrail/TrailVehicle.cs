@@ -173,9 +173,8 @@ namespace LightTrail
             await UpdateVehiclePtfx(m_playerVehicle);
         }
 
-        private bool IsPlayerBraking => (GetEntitySpeed(m_playerVehicle) != 0.0f 
-            && GetEntitySpeedVector(m_playerVehicle, true).Y > 0.0f 
-            && (IsControlPressed(1, (int)Control.VehicleBrake) || IsDisabledControlPressed(1, (int)Control.VehicleBrake)));
+        private bool IsPlayerBraking => GetEntitySpeedVector(m_playerVehicle, true).Y > 0.0f 
+            && (IsControlPressed(1, (int)Control.VehicleBrake) || IsDisabledControlPressed(1, (int)Control.VehicleBrake));
 
         private async Task UpdateVehiclePtfx(int entity)
         {
