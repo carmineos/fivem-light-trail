@@ -89,7 +89,11 @@ namespace LightTrail
             // remove for disconnected players
             if (queuedToRemove.Count != 0)
             {
-                queuedToRemove.ForEach(q => remoteVehicles.Remove(q));
+                foreach (var q in queuedToRemove)
+                {
+                    await q.StopAll();
+                    remoteVehicles.Remove(q);
+                }
                 queuedToRemove.Clear();
             }
         }

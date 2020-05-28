@@ -129,7 +129,7 @@ namespace LightTrail
             await m_trailMiddle.LoopBrakeMode();
         }
 
-        private async Task StopAll()
+        public async Task StopAll()
         {
             m_trailLeft.Stop();
             m_trailRight.Stop();
