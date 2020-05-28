@@ -30,7 +30,8 @@ namespace LightTrail
                 }
 
                 Debug.WriteLine($"LightTrail: Switched trail mode to {trailMode}");
-                await localVehicle.SetTrailMode(trailMode, true);
+                await localVehicle.SetTrailMode(trailMode);
+                DecorSetInt(localVehicle.PlayerVehicle, "_trail_mode", (int)trailMode);
 
             }), false);
 
@@ -49,12 +50,14 @@ namespace LightTrail
 
                 foreach (var p in remotePlayers)
                 {
+                    if (p == GetPlayerIndex())
+                        continue;
+
                     if (!remoteVehicles.Any(v => v.PlayerId == p))
                     {
                         remoteVehicles.Add(new TrailVehicle(p));
                     }
                 }
-
                 lastUpdateTime = GetGameTimer();
             }
         }
@@ -82,6 +85,9 @@ namespace LightTrail
                 }
                 else
                 {
+                    var decorTrailMode = (TrailMode)DecorGetInt(veh.PlayerVehicle, "_trail_mode");
+
+                    await veh.SetupTrailMode(decorTrailMode);
                     await veh.Update();
                 }
             }

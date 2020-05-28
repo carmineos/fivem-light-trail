@@ -22,20 +22,23 @@ namespace LightTrail
         private TrailFx m_trailMiddle = new TrailFx(taillight_m);
 
         public int PlayerId = -1;
+        public int PlayerVehicle => m_playerVehicle;
         public bool IsValidPlayer => PlayerId != -1 && NetworkIsPlayerActive(PlayerId);
 
         public TrailVehicle(int targetPlayer)
         {
             PlayerId = targetPlayer;
 
-            SetupTrailMode();
+            SetupTrailMode(m_trailMode);
         }
 
-        private async Task SetupTrailMode()
+        public async Task SetupTrailMode(TrailMode trailMode)
         {
             await StopAll();
 
-            switch (m_trailMode)
+            m_trailMode = trailMode;
+
+            switch (trailMode)
             {
                 case TrailMode.Off:
                     break;
@@ -104,15 +107,12 @@ namespace LightTrail
             await Task.FromResult(0);
         }
 
-        public async Task SetTrailMode(TrailMode trailMode, bool isLocal = false)
+        public async Task SetTrailMode(TrailMode trailMode)
         {
-            if (isLocal)
-            {
-                DecorSetInt(m_playerVehicle, "_trail_mode", (int)trailMode);
-            }
+            if (m_trailMode == trailMode)
+                return;
 
-            m_trailMode = trailMode;
-            await SetupTrailMode();
+            await SetupTrailMode(trailMode);
         }
 
         private async Task UpdateBrakeModeStatusAll()
@@ -153,8 +153,6 @@ namespace LightTrail
             await UpdatePlayerVehicle();
         }
 
-        TrailMode m_lastTrailMode;
-
         private async Task UpdatePlayerVehicle()
         {
             if (!DoesEntityExist(m_playerVehicle))
@@ -162,19 +160,24 @@ namespace LightTrail
                 return;
             }
 
-            m_trailMode = (TrailMode)DecorGetInt(m_playerVehicle, "_trail_mode");
-
-            if (m_lastTrailMode != m_trailMode)
-            {
-                m_lastTrailMode = m_trailMode;
-                await SetupTrailMode();
-            }
-
             await UpdateVehiclePtfx(m_playerVehicle);
         }
 
         private bool IsPlayerBraking => GetEntitySpeedVector(m_playerVehicle, true).Y > 0.0f 
-            && (IsControlPressed(1, (int)Control.VehicleBrake) || IsDisabledControlPressed(1, (int)Control.VehicleBrake));
+            && IsAnyVehicleWheelBraking(); // Temporary solution until GetVehicleBrakePressure is added to FiveM https://github.com/E66666666/GTAVManualTransmission/blob/master/Gears/Memory/VehicleExtensions.cpp#L138-L145 
+
+        private bool IsAnyVehicleWheelBraking()
+        {
+            int numWheels = GetVehicleNumberOfWheels(m_playerVehicle);
+
+            for (int i = 0; i < numWheels; i++)
+            {
+                if (GetVehicleWheelBrakePressure(m_playerVehicle, i) > 0.0f)
+                    return true;
+            }
+
+            return false;
+        }
 
         private async Task UpdateVehiclePtfx(int entity)
         {
@@ -210,7 +213,7 @@ namespace LightTrail
                     {
                         await StopAll();
                         m_playerVehicle = vehicle;
-                        await SetupTrailMode();
+                        await SetupTrailMode(m_trailMode);
                     }
                 }
                 else
@@ -226,8 +229,6 @@ namespace LightTrail
                 m_playerVehicle = -1;
                 await StopAll();
             }
-
-            await BaseScript.Delay(500);
         }
     }
 }
