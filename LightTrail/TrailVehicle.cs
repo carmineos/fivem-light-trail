@@ -159,20 +159,21 @@ namespace LightTrail
             await UpdateVehiclePtfx(m_playerVehicle);
         }
 
-        private bool IsPlayerBraking => GetEntitySpeedVector(m_playerVehicle, true).Y > 0.0f 
-            && IsAnyVehicleWheelBraking(); // Temporary solution until GetVehicleBrakePressure is added to FiveM https://github.com/E66666666/GTAVManualTransmission/blob/master/Gears/Memory/VehicleExtensions.cpp#L138-L145 
+        private bool IsPlayerBraking => GetEntitySpeedVector(m_playerVehicle, true).Y > 0.0f
+            // Temporary solution until GetVehicleBrakePressure is added to FiveM https://github.com/E66666666/GTAVManualTransmission/blob/master/Gears/Memory/VehicleExtensions.cpp#L138-L145 
+            && AreVehicleWheelsBraking();
 
-        private bool IsAnyVehicleWheelBraking()
+        private bool AreVehicleWheelsBraking()
         {
             int numWheels = GetVehicleNumberOfWheels(m_playerVehicle);
 
             for (int i = 0; i < numWheels; i++)
             {
-                if (GetVehicleWheelBrakePressure(m_playerVehicle, i) > 0.0f)
-                    return true;
+                if (!(GetVehicleWheelBrakePressure(m_playerVehicle, i) > 0.0f))
+                    return false;
             }
 
-            return false;
+            return true;
         }
 
         private async Task UpdateVehiclePtfx(int entity)
