@@ -21,8 +21,14 @@ Each vehicle can be set to have its trails either always on, or showing only whi
 * Add brake lights trails to vehicles
 
 ### Client Commands
-* `trail_mode <off|on|brake`: Sets the player's vehicle trail mode
+* `trail_mode <off|on|brake>`: Sets the player's vehicle trail mode
 * `trail_print`: Prints info about all the vehicles with a trail on
+
+### Example
+Remember that you can write commands in the console, or, by prefixing them with a `/`, in chat:
+* `trail_mode on`: Sets the player's vehicle trail mode to be in always on mode (trails will be always showing from tail lights)
+* `trail_mode brake`: Sets the player's vehicle trail mode to be in brake mode (trails will appear from brake lights only when braking)
+* `trail_mode off`: Removes the player's vehicle trail
 
 [Source](https://github.com/carmineos/fivem-light-trail)
 [Download](https://github.com/carmineos/fivem-light-trail/releases)
