@@ -27,7 +27,7 @@ before_build:
 after_build:
 - cmd: md %APPVEYOR_BUILD_FOLDER%\dist\light-trail
 - cmd: move /Y %APPVEYOR_BUILD_FOLDER%\dist\*.* %APPVEYOR_BUILD_FOLDER%\dist\light-trail
-- cmd: move /Y %APPVEYOR_BUILD_FOLDER%\LightTrail.Client\bin\%CONFIGURATION%\net452\LightTrail.net.dll %APPVEYOR_BUILD_FOLDER%\dist\light-trail
+- cmd: move /Y %APPVEYOR_BUILD_FOLDER%\LightTrail\bin\%CONFIGURATION%\net452\LightTrail.net.dll %APPVEYOR_BUILD_FOLDER%\dist\light-trail
 - 7z a light-trail-v%TAG_NUMBER%.zip %APPVEYOR_BUILD_FOLDER%\dist\*
 
 artifacts:
