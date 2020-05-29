@@ -87,7 +87,7 @@ namespace LightTrail
                     if (IsPlayerBraking)
                     {
                         trail.Status = TrailStatus.FadingIn;
-                        trail.Start(m_playerVehicle);
+                        //trail.Start(m_playerVehicle);
                     }
                     break;
 

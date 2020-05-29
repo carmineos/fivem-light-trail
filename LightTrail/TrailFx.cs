@@ -111,7 +111,7 @@ namespace LightTrail
             {
                 case TrailStatus.Empty:
                     Off();
-                    Stop();
+                    Update();
                     break;
 
                 case TrailStatus.Full:
