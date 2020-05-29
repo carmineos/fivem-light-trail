@@ -11,7 +11,7 @@ namespace LightTrail
     class TrailScript : BaseScript
     {
         public const string DecorName = "_trail_mode";
-        
+
         TrailVehicle localVehicle;
         Dictionary<int, TrailVehicle> remoteVehicles = new Dictionary<int, TrailVehicle>();
         
@@ -19,6 +19,8 @@ namespace LightTrail
 
         public TrailScript()
         {
+            DecorRegister(DecorName, 3);
+
             RegisterCommand("trail_mode", new Action<int, dynamic>(async (source, args) =>
             {
                 if (args.Count < 1)
@@ -100,8 +102,10 @@ namespace LightTrail
                     continue;
                 }
 
+                await trail.GetPlayerVehicle();
+
                 // If there is no decor on the vehicle
-                if(!DecorExistOn(trail.PlayerVehicle, DecorName))
+                if (!DecorExistOn(trail.PlayerVehicle, DecorName))
                 {
                     await trail.StopAll();
                     //removeList.Add(player);
@@ -119,7 +123,7 @@ namespace LightTrail
                 }
 
                 await trail.SetTrailModeAsync(decorTrailMode);
-                await trail.Update();
+                await trail.UpdatePlayerVehicle();
             }
 
             foreach (var item in removeList)

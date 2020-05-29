@@ -21,14 +21,33 @@ namespace LightTrail
         private TrailFx m_trailRight = new TrailFx(taillight_r);
         private TrailFx m_trailMiddle = new TrailFx(taillight_m);
 
-        public int PlayerId = -1;
-        public int PlayerVehicle => m_playerVehicle;
+        public TrailMode TrailMode => m_trailMode;
+        public int PlayerIndex { get; private set; } = -1;
+        public int PlayerVehicle
+        {
+            get => m_playerVehicle;
+            set
+            {
+                if (m_playerVehicle == value)
+                    return;
+
+                m_playerVehicle = value;
+                PlayerVehicleChanged.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        public event EventHandler PlayerVehicleChanged;
 
         public TrailVehicle(int targetPlayer)
         {
-            PlayerId = targetPlayer;
+            PlayerIndex = targetPlayer;
 
             SetupTrailMode(m_trailMode);
+
+            PlayerVehicleChanged += (sender, args) =>
+            {
+                DecorSetInt(m_playerVehicle, "_trail_mode", (int)m_trailMode);
+            };
         }
 
         private async Task SetupTrailMode(TrailMode trailMode)
@@ -149,7 +168,7 @@ namespace LightTrail
             await UpdatePlayerVehicle();
         }
 
-        private async Task UpdatePlayerVehicle()
+        public async Task UpdatePlayerVehicle()
         {
             if (!DoesEntityExist(m_playerVehicle))
             {
@@ -195,13 +214,13 @@ namespace LightTrail
         /// Updates the <see cref="m_playerVehicle"/>
         /// </summary>
         /// <returns></returns>
-        private async Task GetPlayerVehicle()
+        public async Task GetPlayerVehicle()
         {
-            var playerPed = GetPlayerPed(PlayerId);
-
+            var playerPed = GetPlayerPed(PlayerIndex);
+            
             if (!IsPedInAnyVehicle(playerPed, false))
             {
-                m_playerVehicle = -1;
+                PlayerVehicle = -1;
                 await StopAll();
             }
 
@@ -209,21 +228,21 @@ namespace LightTrail
 
             if (GetPedInVehicleSeat(vehicle, -1) != playerPed || IsEntityDead(vehicle))
             {
-                m_playerVehicle = -1;
+                PlayerVehicle = -1;
                 await StopAll();
             }
 
             if (vehicle != m_playerVehicle)
             {
                 await StopAll();
-                m_playerVehicle = vehicle;
+                PlayerVehicle = vehicle;
                 await SetupTrailMode(m_trailMode);
             }
         }
 
         public override string ToString()
         {
-            return $"PlayerId: {PlayerId}, Vehicle: {PlayerVehicle}, TrailMode: {m_trailMode}";
+            return $"PlayerIndex: {PlayerIndex}, Vehicle: {m_playerVehicle}, TrailMode: {m_trailMode}";
         }
     }
 }
