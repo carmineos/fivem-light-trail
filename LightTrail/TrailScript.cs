@@ -19,6 +19,12 @@ namespace LightTrail
 
         public TrailScript()
         {
+            if (GetCurrentResourceName() != "light-trail")
+            {
+                Debug.WriteLine("Invalid resource name, be sure the resource name is light-trail");
+                return;
+            }
+
             DecorRegister(DecorName, 3);
 
             RegisterCommand("trail_mode", new Action<int, dynamic>(async (source, args) =>
