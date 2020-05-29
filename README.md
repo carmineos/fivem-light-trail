@@ -1,8 +1,7 @@
 # Light Trail
 |Master|Development|
 |:-:|:-:|
-|[![Build status](https://ci.appveyor.com/api/projects/status/qialhqew9j0i9528/branch/master?svg=true)](https://ci.appveyor.com/project/carmineos/fivem-vstancer/branch/master) |[![Build status](https://ci.appveyor.com/api/projects/status/qialhqew9j0i9528/branch/development?svg=true)](https://ci.appveyor.com/project/carmineos/fivem-vstancer/branch/development)|
-
+|[![Build status](https://ci.appveyor.com/api/projects/status/vx32m07r33i86tdk/branch/master?svg=true)](https://ci.appveyor.com/project/carmineos/fivem-light-trail/branch/master) |[![Build status](https://ci.appveyor.com/api/projects/status/vx32m07r33i86tdk/branch/development?svg=true)](https://ci.appveyor.com/project/carmineos/fivem-light-trail/branch/development)|
 ### Description
 The script aims to recreate the light trail effect from the popular Anime "Initial D".
 Each vehicle can be set to have its trails either always on, or showing only while the vehicle is braking 

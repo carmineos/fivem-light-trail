@@ -1,0 +1,47 @@
+install:
+- ps: $env:LAST_TAG = git describe --abbrev=0 --tags --exclude "*-dev"
+- ps: $env:TAG_NUMBER = $env:LAST_TAG.Substring($env:LAST_TAG.IndexOf('v') + 1)
+- ps: if ($env:APPVEYOR_REPO_TAG -ne $True){ $env:TAG_NUMBER = $env:TAG_NUMBER + "." + $env:APPVEYOR_BUILD_NUMBER } else { $env:TAG_NUMBER = $env:TAG_NUMBER + "." + 0 }
+
+version: 1.0.{build}
+image: Visual Studio 2019
+configuration: Release
+
+dotnet_csproj:
+  patch: true
+  file: '**\*.csproj'
+  version: '$(TAG_NUMBER)'
+  package_version: '$(TAG_NUMBER)'
+  assembly_version: '$(TAG_NUMBER)'
+  file_version: '$(TAG_NUMBER)'
+  informational_version: '$(TAG_NUMBER)'
+  
+build:
+  parallel: true
+  verbosity: minimal
+  project: fivem-light-trail.sln
+  
+before_build:
+- nuget restore
+
+after_build:
+- cmd: md %APPVEYOR_BUILD_FOLDER%\dist\light-trail
+- cmd: move /Y %APPVEYOR_BUILD_FOLDER%\dist\*.* %APPVEYOR_BUILD_FOLDER%\dist\light-trail
+- cmd: move /Y %APPVEYOR_BUILD_FOLDER%\LightTrail.Client\bin\%CONFIGURATION%\net452\LightTrail.net.dll %APPVEYOR_BUILD_FOLDER%\dist\light-trail
+- 7z a light-trail-v%TAG_NUMBER%.zip %APPVEYOR_BUILD_FOLDER%\dist\*
+
+artifacts:
+- path: light-trail-v$(TAG_NUMBER).zip
+  name: light-trail
+
+deploy:
+  provider: GitHub
+  tag: $(APPVEYOR_REPO_TAG_NAME)
+  release: light-trail $(APPVEYOR_REPO_TAG_NAME)
+  auth_token: 
+    secure: koH1kqQLiJXw2cH24CMO1v9OA/RZ/HKeFZA8RSKOznBMsIvodL4HhzKPciA4qyfE
+  draft: true
+  prerelease: false
+  on:
+    branch: master
+    APPVEYOR_REPO_TAG: true
