@@ -97,6 +97,9 @@ namespace LightTrail
                 // If the player is not valid
                 if (player == -1 || !NetworkIsPlayerActive(player))
                 {
+                    if (DoesEntityExist(trail.PlayerVehicle))
+                        DecorRemove(trail.PlayerVehicle, DecorName);
+
                     await trail.StopAll();
                     removeList.Add(player);
                     continue;
