@@ -31,23 +31,21 @@ namespace LightTrail
                 if (m_playerVehicle == value)
                     return;
 
+                if(DoesEntityExist(m_playerVehicle))
+                    DecorRemove(m_playerVehicle, TrailScript.DecorName);
+
                 m_playerVehicle = value;
-                PlayerVehicleChanged.Invoke(this, EventArgs.Empty);
+
+                if (DoesEntityExist(m_playerVehicle))
+                    DecorSetInt(m_playerVehicle, TrailScript.DecorName, (int)m_trailMode);
             }
         }
-
-        public event EventHandler PlayerVehicleChanged;
 
         public TrailVehicle(int targetPlayer)
         {
             PlayerIndex = targetPlayer;
 
             SetupTrailMode(m_trailMode);
-
-            PlayerVehicleChanged += (sender, args) =>
-            {
-                DecorSetInt(m_playerVehicle, "_trail_mode", (int)m_trailMode);
-            };
         }
 
         private async Task SetupTrailMode(TrailMode trailMode)
