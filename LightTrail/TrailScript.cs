@@ -10,8 +10,10 @@ namespace LightTrail
 {
     class TrailScript : BaseScript
     {
+        public const string DecorName = "_trail_mode";
+        
         TrailVehicle localVehicle;
-        List<TrailVehicle> remoteVehicles = new List<TrailVehicle>();
+        Dictionary<int, TrailVehicle> remoteVehicles = new Dictionary<int, TrailVehicle>();
 
         public TrailScript()
         {
@@ -30,15 +32,13 @@ namespace LightTrail
                 }
 
                 Debug.WriteLine($"LightTrail: Switched trail mode to {trailMode}");
-                await localVehicle.SetTrailMode(trailMode);
-                DecorSetInt(localVehicle.PlayerVehicle, "_trail_mode", (int)trailMode);
+                await localVehicle.SetTrailModeAsync(trailMode);
+                DecorSetInt(localVehicle.PlayerVehicle, DecorName, (int)trailMode);
 
             }), false);
 
             Tick += Update;
         }
-
-        List<TrailVehicle> queuedToRemove = new List<TrailVehicle>();
 
         int lastUpdateTime = 0;
 
@@ -48,16 +48,15 @@ namespace LightTrail
             {
                 var remotePlayers = GetActivePlayers();
 
-                foreach (var p in remotePlayers)
+                foreach (var player in remotePlayers)
                 {
-                    if (p == GetPlayerIndex())
+                    if (player == GetPlayerIndex())
                         continue;
 
-                    if (!remoteVehicles.Any(v => v.PlayerId == p))
-                    {
-                        remoteVehicles.Add(new TrailVehicle(p));
-                    }
+                    if(!remoteVehicles.ContainsKey(player))
+                        remoteVehicles[player] = new TrailVehicle(player);
                 }
+
                 lastUpdateTime = GetGameTimer();
             }
         }
@@ -77,30 +76,38 @@ namespace LightTrail
             UpdateRemotePlayers();
 
             // update remote vehicles
-            foreach (var veh in remoteVehicles)
+            foreach (var player in remoteVehicles.Keys)
             {
-                if (!veh.IsValidPlayer)
-                {
-                    queuedToRemove.Add(veh);
-                }
-                else
-                {
-                    var decorTrailMode = (TrailMode)DecorGetInt(veh.PlayerVehicle, "_trail_mode");
+                var trail = remoteVehicles[player];
 
-                    await veh.SetupTrailMode(decorTrailMode);
-                    await veh.Update();
-                }
-            }
-
-            // remove for disconnected players
-            if (queuedToRemove.Count != 0)
-            {
-                foreach (var q in queuedToRemove)
+                // If the player is not valid
+                if (player == -1 || !NetworkIsPlayerActive(player))
                 {
-                    await q.StopAll();
-                    remoteVehicles.Remove(q);
+                    await trail.StopAll();
+                    remoteVehicles.Remove(player);
+                    continue;
                 }
-                queuedToRemove.Clear();
+
+                // If there is no decor on the vehicle
+                if(!DecorExistOn(trail.PlayerVehicle, DecorName))
+                {
+                    await trail.StopAll();
+                    remoteVehicles.Remove(player);
+                    continue;
+                }
+
+                var decorTrailMode = (TrailMode)DecorGetInt(trail.PlayerVehicle, DecorName);
+
+                // If the decor is set to Off
+                if(decorTrailMode == TrailMode.Off)
+                {
+                    await trail.StopAll();
+                    remoteVehicles.Remove(player);
+                    continue;
+                }
+
+                await trail.SetTrailModeAsync(decorTrailMode);
+                await trail.Update();
             }
         }
     }

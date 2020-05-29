@@ -14,7 +14,7 @@ namespace LightTrail
         private const string brakelight_r = "brakelight_r";
         private const string brakelight_m = "brakelight_m";
 
-        private TrailMode m_trailMode = TrailMode.On;
+        private TrailMode m_trailMode = TrailMode.Off;
         private int m_playerVehicle;
 
         private TrailFx m_trailLeft = new TrailFx(taillight_l);
@@ -23,7 +23,6 @@ namespace LightTrail
 
         public int PlayerId = -1;
         public int PlayerVehicle => m_playerVehicle;
-        public bool IsValidPlayer => PlayerId != -1 && NetworkIsPlayerActive(PlayerId);
 
         public TrailVehicle(int targetPlayer)
         {
@@ -32,13 +31,13 @@ namespace LightTrail
             SetupTrailMode(m_trailMode);
         }
 
-        public async Task SetupTrailMode(TrailMode trailMode)
+        private async Task SetupTrailMode(TrailMode trailMode)
         {
             await StopAll();
 
             m_trailMode = trailMode;
 
-            switch (trailMode)
+            switch (m_trailMode)
             {
                 case TrailMode.Off:
                     break;
@@ -61,9 +60,6 @@ namespace LightTrail
                     await StartAll(m_playerVehicle);
                     break;
             }
-
-
-            await Task.FromResult(0);
         }
 
         private async Task UpdateBrakeModeStatus(TrailFx trail)
@@ -107,7 +103,7 @@ namespace LightTrail
             await Task.FromResult(0);
         }
 
-        public async Task SetTrailMode(TrailMode trailMode)
+        public async Task SetTrailModeAsync(TrailMode trailMode)
         {
             if (m_trailMode == trailMode)
                 return;
@@ -202,32 +198,25 @@ namespace LightTrail
         {
             var playerPed = GetPlayerPed(PlayerId);
 
-            if (IsPedInAnyVehicle(playerPed, false))
+            if (!IsPedInAnyVehicle(playerPed, false))
             {
-                int vehicle = GetVehiclePedIsIn(playerPed, false);
-
-                if (GetPedInVehicleSeat(vehicle, -1) == playerPed && !IsEntityDead(vehicle))
-                {
-                    // Update current vehicle and get its preset
-                    if (vehicle != m_playerVehicle)
-                    {
-                        await StopAll();
-                        m_playerVehicle = vehicle;
-                        await SetupTrailMode(m_trailMode);
-                    }
-                }
-                else
-                {
-                    // If player isn't driving current vehicle or vehicle is dead
-                    m_playerVehicle = -1;
-                    await StopAll();
-                }
-            }
-            else
-            {
-                // If player isn't in any vehicle
                 m_playerVehicle = -1;
                 await StopAll();
+            }
+
+            int vehicle = GetVehiclePedIsIn(playerPed, false);
+
+            if (GetPedInVehicleSeat(vehicle, -1) != playerPed || IsEntityDead(vehicle))
+            {
+                m_playerVehicle = -1;
+                await StopAll();
+            }
+
+            if (vehicle != m_playerVehicle)
+            {
+                await StopAll();
+                m_playerVehicle = vehicle;
+                await SetupTrailMode(m_trailMode);
             }
         }
     }
