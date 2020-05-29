@@ -22,12 +22,10 @@
   <ItemGroup>
 
     <PackageReference Include="CitizenFX.Core.Client">
-      <Version>1.0.2104</Version>
+      <Version>1.0.2539</Version>
       <ExcludeAssets>runtime</ExcludeAssets>
       <IncludeAssets>compile; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-
-    <PackageReference Include="MenuAPI.FiveM" Version="3.0.4" />
   </ItemGroup>
 
   <ItemGroup>
@@ -35,7 +33,7 @@
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="if '$(CI)' == '' ( &#xD;&#xA;call &quot;$(SolutionDir)postbuild.bat&quot; &quot;$(TargetPath)&quot;&#xD;&#xA;call &quot;$(SolutionDir)postbuild.bat&quot; &quot;$(SolutionDir)\dist\fxmanifest.lua&quot;&#xD;&#xA;call &quot;$(SolutionDir)postbuild.bat&quot; &quot;$(TargetDir)\MenuAPI.dll&quot;)" />
+    <Exec Command="if '$(CI)' == '' ( &#xD;&#xA;call &quot;$(SolutionDir)postbuild.bat&quot; &quot;$(TargetPath)&quot;&#xD;&#xA;call &quot;$(SolutionDir)postbuild.bat&quot; &quot;$(SolutionDir)\dist\fxmanifest.lua&quot;)" />
   </Target>
 
 </Project>
