@@ -220,5 +220,10 @@ namespace LightTrail
                 await SetupTrailMode(m_trailMode);
             }
         }
+
+        public override string ToString()
+        {
+            return $"PlayerId: {PlayerId}, Vehicle: {PlayerVehicle}, TrailMode: {m_trailMode}";
+        }
     }
 }

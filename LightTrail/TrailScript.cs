@@ -14,6 +14,8 @@ namespace LightTrail
         
         TrailVehicle localVehicle;
         Dictionary<int, TrailVehicle> remoteVehicles = new Dictionary<int, TrailVehicle>();
+        
+        List<int> removeList = new List<int>();
 
         public TrailScript()
         {
@@ -36,7 +38,17 @@ namespace LightTrail
                 DecorSetInt(localVehicle.PlayerVehicle, DecorName, (int)trailMode);
 
             }), false);
+            RegisterCommand("trail_print", new Action<int, dynamic>(async (source, args) =>
+            {
+                if(localVehicle != null)
+                    Debug.WriteLine(localVehicle.ToString());
 
+                foreach (var vehicle in remoteVehicles)
+                {
+                    Debug.WriteLine(vehicle.ToString());
+                }
+
+            }), false);
             Tick += Update;
         }
 
@@ -84,7 +96,7 @@ namespace LightTrail
                 if (player == -1 || !NetworkIsPlayerActive(player))
                 {
                     await trail.StopAll();
-                    remoteVehicles.Remove(player);
+                    removeList.Add(player);
                     continue;
                 }
 
@@ -92,7 +104,7 @@ namespace LightTrail
                 if(!DecorExistOn(trail.PlayerVehicle, DecorName))
                 {
                     await trail.StopAll();
-                    remoteVehicles.Remove(player);
+                    //removeList.Add(player);
                     continue;
                 }
 
@@ -102,13 +114,19 @@ namespace LightTrail
                 if(decorTrailMode == TrailMode.Off)
                 {
                     await trail.StopAll();
-                    remoteVehicles.Remove(player);
+                    //removeList.Add(player);
                     continue;
                 }
 
                 await trail.SetTrailModeAsync(decorTrailMode);
                 await trail.Update();
             }
+
+            foreach (var item in removeList)
+            {
+                remoteVehicles.Remove(item);
+            }
+            removeList.Clear();
         }
     }
 }
