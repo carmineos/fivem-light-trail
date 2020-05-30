@@ -70,7 +70,7 @@ namespace LightTrail
 
                 foreach (var player in remotePlayers)
                 {
-                    if (player == GetPlayerIndex())
+                    if (player == PlayerId())
                         continue;
 
                     if(!remoteVehicles.ContainsKey(player))

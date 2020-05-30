@@ -37,7 +37,7 @@ namespace LightTrail
                 m_playerVehicle = value;
 
                 // Move decor to the new vehicle only if it's local player
-                if (PlayerIndex == GetPlayerIndex())
+                if (PlayerIndex == PlayerId())
                 {
                     if (DoesEntityExist(m_playerVehicle))
                         DecorSetInt(m_playerVehicle, TrailScript.DecorName, (int)m_trailMode);
