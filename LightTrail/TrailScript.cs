@@ -10,7 +10,7 @@ namespace LightTrail
 {
     class TrailScript : BaseScript
     {
-        public const string DecorName = "_trail_mode";
+        public const string DecorName = "light_trail_mode";
 
         TrailVehicle localVehicle;
         Dictionary<int, TrailVehicle> remoteVehicles = new Dictionary<int, TrailVehicle>();
@@ -31,32 +31,43 @@ namespace LightTrail
             {
                 if (args.Count < 1)
                 {
-                    Debug.WriteLine($"LightTrail: Missing argument off|on|brake");
+                    Debug.WriteLine($"Missing argument off|on|brake");
                     return;
                 }
 
                 if (!Enum.TryParse<TrailMode>(args[0], true, out TrailMode trailMode))
                 {
-                    Debug.WriteLine($"LightTrail: Error parsing {args[0]}");
+                    Debug.WriteLine($"Invalid parameter {args[0]}, accepted values are: [off|on|brake]");
                     return;
                 }
 
-                Debug.WriteLine($"LightTrail: Switched trail mode to {trailMode}");
+                if(localVehicle == null)
+                {
+                    Debug.WriteLine($"No local vehicle found");
+                    return;
+                }
+
                 await localVehicle.SetTrailModeAsync(trailMode);
-                DecorSetInt(localVehicle.PlayerVehicle, DecorName, (int)trailMode);
+
+                Debug.WriteLine($"Switched light trail mode to {trailMode}");
+                
+                if(DoesEntityExist(localVehicle.PlayerVehicle))
+                    DecorSetInt(localVehicle.PlayerVehicle, DecorName, (int)trailMode);
 
             }), false);
-            RegisterCommand("trail_print", new Action<int, dynamic>(async (source, args) =>
+            
+            RegisterCommand("trail_print", new Action<int, dynamic>((source, args) =>
             {
                 if(localVehicle != null)
                     Debug.WriteLine(localVehicle.ToString());
 
                 foreach (var vehicle in remoteVehicles)
                 {
-                    Debug.WriteLine(vehicle.ToString());
+                    Debug.WriteLine(vehicle.Value.ToString());
                 }
 
             }), false);
+            
             Tick += Update;
         }
 
