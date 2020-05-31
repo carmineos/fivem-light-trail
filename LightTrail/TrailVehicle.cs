@@ -31,13 +31,10 @@ namespace LightTrail
                 if (m_playerVehicle == value)
                     return;
 
-                if(DoesEntityExist(m_playerVehicle))
+                if (DoesEntityExist(m_playerVehicle))
                     DecorRemove(m_playerVehicle, TrailScript.DecorName);
 
                 m_playerVehicle = value;
-
-                if (DoesEntityExist(m_playerVehicle))
-                    DecorSetInt(m_playerVehicle, TrailScript.DecorName, (int)m_trailMode);
             }
         }
 
@@ -218,29 +215,32 @@ namespace LightTrail
             
             if (!IsPedInAnyVehicle(playerPed, false))
             {
+                await SetTrailModeAsync(TrailMode.Off);
                 PlayerVehicle = -1;
-                await StopAll();
             }
 
             int vehicle = GetVehiclePedIsIn(playerPed, false);
 
             if (GetPedInVehicleSeat(vehicle, -1) != playerPed || IsEntityDead(vehicle))
             {
+                await SetTrailModeAsync(TrailMode.Off);
                 PlayerVehicle = -1;
-                await StopAll();
             }
 
             if (vehicle != m_playerVehicle)
             {
-                await StopAll();
+                await SetTrailModeAsync(TrailMode.Off);
                 PlayerVehicle = vehicle;
-                await SetupTrailMode(m_trailMode);
             }
         }
 
         public override string ToString()
         {
-            return $"PlayerIndex: {PlayerIndex}, Vehicle: {m_playerVehicle}, TrailMode: {m_trailMode}";
+            string decor = string.Empty;
+            if (DoesEntityExist(m_playerVehicle) && DecorExistOn(m_playerVehicle, TrailScript.DecorName))
+                decor = $"{(TrailMode)DecorGetInt(m_playerVehicle, TrailScript.DecorName)}";
+            
+            return $"PlayerIndex: {PlayerIndex}, Vehicle: {m_playerVehicle}, TrailMode: {m_trailMode}, Decor: {decor}";
         }
     }
 }
