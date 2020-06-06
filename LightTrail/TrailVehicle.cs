@@ -23,6 +23,7 @@ namespace LightTrail
 
         public TrailMode TrailMode => m_trailMode;
         public int PlayerIndex { get; private set; } = -1;
+        public string PlayerName { get; }
         public int PlayerVehicle
         {
             get => m_playerVehicle;
@@ -41,6 +42,7 @@ namespace LightTrail
         public TrailVehicle(int targetPlayer)
         {
             PlayerIndex = targetPlayer;
+            PlayerName = GetPlayerName(PlayerIndex);
 
             SetupTrailMode(m_trailMode);
         }
@@ -240,7 +242,7 @@ namespace LightTrail
             if (DoesEntityExist(m_playerVehicle) && DecorExistOn(m_playerVehicle, TrailScript.DecorName))
                 decor = $"{(TrailMode)DecorGetInt(m_playerVehicle, TrailScript.DecorName)}";
             
-            return $"PlayerIndex: {PlayerIndex}, Vehicle: {m_playerVehicle}, TrailMode: {m_trailMode}, Decor: {decor}";
+            return $"PlayerName: {PlayerName}, PlayerIndex: {PlayerIndex}, Vehicle: {m_playerVehicle}, TrailMode: {m_trailMode}, Decor: {decor}";
         }
     }
 }
