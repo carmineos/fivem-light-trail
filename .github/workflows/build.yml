@@ -1,0 +1,35 @@
+name: Build Artifact
+
+on:
+  push:
+    branches: [ "master", "development" ]
+  pull_request:
+    branches: [ "master", "development" ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    env:
+      Solution_Name: fivem-light-trail.sln
+      Project_Name: LightTrail\LightTrail.csproj
+      Dist_Folder: ${{ github.workspace }}\dist\
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Setup MSBuild.exe
+      uses: microsoft/setup-msbuild@v1.1
+
+    - name: Restore Packages
+      run: nuget restore ${{ env.Project_Name }}
+        
+    - name: Build
+      run: msbuild ${{ env.Project_Name }} /p:Configuration=Release /p:OutDir=${{ env.Dist_Folder }}
+      
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: light-trail
+        path: ${{ env.Dist_Folder }}\*
